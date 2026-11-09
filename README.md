@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 02
+# WotLK Mobile Browser Lab — Build 03
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -26,7 +26,7 @@ python -m pytest -q
 node --test tests/*.test.mjs   # optional Node.js 20+ JS tests
 ```
 
-The browser interface works without a game server. The `/api/health` endpoint explicitly says `gameplay_ready: false`. `/api/realm-status` tests only TCP reachability, not authentic gameplay readiness.
+The browser interface works without a game server. Build 03 adds an opt-in host for a separately built external WotLK browser client; see [client integration instructions](docs/CLIENT_INTEGRATION.md). The `/api/health` endpoint explicitly says `gameplay_ready: false`. `/api/realm-status` tests only TCP reachability, not authentic gameplay readiness.
 
 ## Build 02 graphics test
 
@@ -39,6 +39,19 @@ This is a browser rendering and input feasibility check, not proof that a 3.3.5a
 game engine can run in Safari or Chrome. The project has **not** been tested
 on real Android/iOS hardware. Headless Chromium in the development sandbox lacks WebGL2,
 so shader compilation and live GPU output still need verification on real hardware.
+
+## Build 03: mount a separately built browser client
+
+The new **Mount external client** button activates only after a client build
+has been installed locally using `scripts/install_wowser.py` and
+`WOTLK_ENABLE_CLIENT=true`. The client is isolated behind a local-only route,
+a same-origin iframe and a nonce-bound input bridge. Joystick and action inputs
+are forwarded to the client page, but actual movement requires upstream client
+API integration; synthetic browser events are not guaranteed to work.
+
+No upstream code, Blizzard assets or downloaded builds are included here.
+**Client UI installation ≠ authentication or real game readiness.**
+See [docs/CLIENT_INTEGRATION.md](docs/CLIENT_INTEGRATION.md).
 
 ## Optional local gateway — development only
 
@@ -53,14 +66,15 @@ In a local lab only, it bridges `/ws/auth` to `127.0.0.1:3724` and `/ws/world` t
 
 ## Integration contract
 
-`web/runtime_adapter.mjs` defines a future `window.WotlkBrowserRuntime` adapter (`apiVersion: 1`) that accepts normalized inputs. **No runtime has been selected or mounted.** The native Rust/Bevy project [Benilla-WotLK](https://github.com/Onixaz/benilla-wotlk) is a **research candidate**, not a browser engine or integrated dependency. [Wowser](https://github.com/wowserhq/client) is an incomplete browser proof of concept, not a drop-in playable engine. [AzerothCore](https://github.com/azerothcore/azerothcore-wotlk) may be suitable for *authorized, local interoperability experiments*, subject to license review.
+`web/runtime_adapter.mjs` defines a future `window.WotlkBrowserRuntime` adapter (`apiVersion: 1`) that accepts normalized inputs. **The standalone runtime contract has no backing implementation yet; Build 03 can mount a separately installed web client UI.** The native Rust/Bevy project [Benilla-WotLK](https://github.com/Onixaz/benilla-wotlk) is a **research candidate**, not a browser engine or integrated dependency. [Wowser](https://github.com/wowserhq/client) is an incomplete browser proof of concept, not a drop-in playable engine. [AzerothCore](https://github.com/azerothcore/azerothcore-wotlk) may be suitable for *authorized, local interoperability experiments*, subject to license review.
 
 ### Intended milestones
 
 1. **Build 01:** touch controls, status UI, isolated local diagnostic/gateway prototype.
-2. **Build 02 (this commit):** original procedural WebGL2 scene, normalized live movement/camera input, graphics capability checks, loopback gateway hardening, tests.
-3. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
-4. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
+2. **Build 02:** original procedural WebGL2 renderer, input movement/camera, browser capability checks.
+3. **Build 03 (this commit):** optional external browser-client install, iframe lifecycle, nonce-bound input bridge and local-only client hosting.
+4. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
+5. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
 
 ## Intellectual property and safety
 

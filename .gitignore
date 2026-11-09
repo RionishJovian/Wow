@@ -12,3 +12,11 @@ client-assets/
 *.wasm
 *.dll
 *.exe
+
+# Local-only third-party client builds and game data: never push to GitHub.
+.local-wowser-client/
+.external-client/
+*.mpq
+*.MPQ
+*.dbc
+*.DBC

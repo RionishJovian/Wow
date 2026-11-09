@@ -2,11 +2,25 @@ import { setupTouchInput } from './input.mjs';
 import { detectRuntime } from './runtime_adapter.mjs';
 import { createProbeRuntime } from './render_probe.mjs';
 import { probeCapabilities } from './capabilities.mjs';
+import { createClientHost } from './client_host.mjs';
 
 const $ = id => document.getElementById(id);
 const eventOut = $('input-event');
 const runtime = detectRuntime();
 const probeRuntime = createProbeRuntime();
+const clientHost = createClientHost();
+let clientInstalled = false;
+let clientBusy = false;
+const stage = $('control-stage');
+const cameraToggle = $('camera-toggle');
+function setCameraCapture(enabled) {
+  stage.classList.toggle('camera-capture', enabled);
+  cameraToggle.setAttribute('aria-pressed', String(enabled));
+  cameraToggle.textContent = enabled ? 'Allow client taps' : 'Enable camera drag';
+}
+cameraToggle.addEventListener('click', () => {
+  setCameraCapture(!stage.classList.contains('camera-capture'));
+});
 let probeBusy = false;
 const capabilities = probeCapabilities();
 $('webgl-support').textContent = capabilities.webgl2
@@ -15,6 +29,51 @@ $('webgl-support').textContent = capabilities.webgl2
 $('wasm-support').textContent = capabilities.wasm ? 'Supported' : 'Not available';
 $('webgl-support').className = capabilities.webgl2 ? 'good' : 'unavailable';
 $('wasm-support').className = capabilities.wasm ? 'good' : 'unavailable';
+
+function restorePlaceholder() {
+  const placeholder = document.createElement('div');
+  placeholder.className = 'runtime-placeholder';
+  const title = document.createElement('strong');
+  title.textContent = 'Game runtime not mounted';
+  const detail = document.createElement('span');
+  detail.textContent = 'External client unmounted; gameplay still unverified';
+  placeholder.append(title, detail);
+  $('game-runtime').replaceChildren(placeholder);
+}
+function updateClientState(state) {
+  const mounted = clientHost.mounted;
+  $('client-host-status').textContent = state.detail;
+  $('client-host-status').className = state.phase === 'bridge-ready' ? 'good' : 'unavailable';
+  $('launch-client').textContent = mounted ? 'Close external client' : 'Mount external client';
+  $('render-label').textContent = mounted ? 'EXTERNAL CLIENT UI — GAMEPLAY NOT VERIFIED' : 'RENDERER NOT MOUNTED';
+}
+$('launch-client').addEventListener('click', async () => {
+  if (clientBusy || (!clientInstalled && !clientHost.mounted)) return;
+  clientBusy = true;
+  $('launch-client').disabled = true;
+  try {
+    if (clientHost.mounted) {
+      await clientHost.unmount();
+      stage.classList.remove('client-active');
+      cameraToggle.hidden = true;
+      setCameraCapture(false);
+      restorePlaceholder();
+    } else {
+      if (probeRuntime.mounted) await probeRuntime.unmount();
+      setCameraCapture(false);
+      stage.classList.add('client-active');
+      cameraToggle.hidden = false;
+      await clientHost.mount({element: $('game-runtime'), onState: updateClientState});
+    }
+  } catch (error) {
+    $('client-host-status').textContent = `Client failed: ${error.message}`;
+    if (!clientHost.mounted) { stage.classList.remove('client-active'); cameraToggle.hidden = true; }
+  } finally {
+    clientBusy = false;
+    $('launch-client').disabled = !clientInstalled && !clientHost.mounted;
+    $('launch-client').textContent = clientHost.mounted ? 'Close external client' : 'Mount external client';
+  }
+});
 
 function updateRendererState(state) {
   const isRunning = state.phase === 'running';
@@ -32,16 +91,14 @@ $('start-render').addEventListener('click', async () => {
   try {
     if (probeRuntime.mounted) {
       await probeRuntime.unmount();
-      // Rebuild the neutral placeholder without reusing old user HTML.
-      const placeholder = document.createElement('div');
-      placeholder.className = 'runtime-placeholder';
-      const title = document.createElement('strong');
-      title.textContent = 'World renderer not installed';
-      const detail = document.createElement('span');
-      detail.textContent = 'Graphics benchmark stopped; actual WoW client still pending';
-      placeholder.append(title, detail);
-      $('game-runtime').replaceChildren(placeholder);
+      restorePlaceholder();
     } else {
+      if (clientHost.mounted) {
+        await clientHost.unmount();
+        stage.classList.remove('client-active');
+        cameraToggle.hidden = true;
+        setCameraCapture(false);
+      }
       await probeRuntime.mount({element: $('game-runtime'), onState: updateRendererState});
     }
   } catch (error) {
@@ -57,6 +114,7 @@ function emitInput(event) {
   updateIndex += 1;
   // Only forward to an authentic runtime after it has been explicitly mounted.
   if (probeRuntime.mounted) probeRuntime.onInput(event);
+  else if (clientHost.mounted) clientHost.onInput(event);
   else if (runtime && runtime.mounted) runtime.onInput(event);
   const fields = Object.entries(event).filter(([key]) => key !== 'type').map(([k, v]) => `${k}: ${v}`).join(' · ');
   eventOut.textContent = `#${updateIndex} ${event.type} ${fields}`;
@@ -123,13 +181,21 @@ async function refreshStatus() {
   button.disabled = true;
   $('service-status').textContent = 'Checking…';
   try {
-    const [healthResp, realmResp] = await Promise.all([
+    const [healthResp, realmResp, clientResp] = await Promise.all([
       fetch('/api/health', {cache:'no-store'}),
       fetch('/api/realm-status', {cache:'no-store'}),
+      fetch('/api/client', {cache:'no-store'}),
     ]);
-    if (!healthResp.ok || !realmResp.ok) throw new Error('Service error');
+    if (!healthResp.ok || !realmResp.ok || !clientResp.ok) throw new Error('Service error');
     const health = await healthResp.json();
     const realm = await realmResp.json();
+    const externalClient = await clientResp.json();
+    clientInstalled = externalClient.available === true;
+    $('launch-client').disabled = clientBusy || (!clientInstalled && !clientHost.mounted);
+    if (!clientHost.mounted) {
+      $('client-host-status').textContent = clientInstalled ? 'Installed locally · unverified UI' : 'No external client installed';
+      $('client-host-status').className = clientInstalled ? 'good' : 'unavailable';
+    }
     $('service-status').textContent = health.gateway === 'running' ? 'Running' : 'Unavailable';
     $('service-status').className = health.gateway === 'running' ? 'good' : 'bad';
     $('gateway-indicator').textContent = health.transport_enabled ? 'Local enabled' : 'Disabled by default';
@@ -144,6 +210,7 @@ async function refreshStatus() {
     $('auth-status').textContent = 'Unknown';
     $('world-status').textContent = 'Unknown';
     $('gateway-indicator').textContent = 'Unavailable';
+    $('launch-client').disabled = true;
   } finally { button.disabled = false; }
 }
 $('check-status').addEventListener('click', refreshStatus);
