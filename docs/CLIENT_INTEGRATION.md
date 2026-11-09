@@ -1,8 +1,11 @@
-# Build 03 — external WotLK browser-client integration
+# Build 04 — pinned upstream browser UI integration
 
 **Status:** Implemented local client mounting, isolated iframe, optional bridge,
 normalized input delivery and offline installer. **Not actual WoW gameplay**.
 No WoW assets or upstream client source are shipped in this repository.
+
+Build 04 adds a reproducible pinned upstream *build path* and honest UI-stage
+telemetry. It remains a proof of concept, not authenticated WoW gameplay.
 
 ## Why this client integration uses an external build
 
@@ -20,6 +23,35 @@ additional compatibility work. Neither qualifies as a turnkey mobile MMO.
 This repository provides the mount lifecycle for whichever independent,
 legally distributable client build proves viable. It does not modify,
 redistribute or fetch either upstream project automatically.
+
+## Pinned upstream compilation (recommended)
+
+The exact `wowserhq/client` revision is declared in
+`scripts/prepare_wowser.py` and verified with `git rev-parse HEAD` before
+instrumentation. The source is patched **in a disposable clone only**;
+original local checkouts remain unchanged. The patch checks for the known
+`Client` constructor, UI loader, and `screen.render()` call and fails closed
+when upstream changes. The compiled UI includes its upstream MIT license.
+
+```sh
+# Requires Git, Node.js 22+, npm and an internet connection.
+python scripts/build_wowser_client.py
+# Equivalent for an already downloaded pinned checkout:
+# python scripts/build_wowser_client.py --source ../wowser-client
+WOTLK_ENABLE_CLIENT=true python -m uvicorn server.app:app --host 127.0.0.1 --port 8765
+```
+
+The new upstream UI reports only **client-created**, **loading-ui**,
+**ui-loader-returned**, **resource-load-failed**, **first-render-call**, and
+**render-failed** over the existing nonce-checked bridge. Stage names cannot
+contain URLs, tokens, exception text or file paths. A render call is **not**
+evidence of original game-world rendering. Missing local asset files will
+commonly produce `resource-load-failed`; no assets are published by the pipeline.
+
+The opt-in `.github/workflows/wowser-integration.yml` workflow checks upstream
+compilation in CI and temporarily uploads the **no-assets** UI bundle. This
+workflow also runs on changes to the integration scripts. It does not perform
+mobile or real-realm acceptance tests.
 
 ## Try the external Wowser UI locally
 

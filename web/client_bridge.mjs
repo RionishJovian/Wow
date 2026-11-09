@@ -4,6 +4,13 @@
  * gameplay. The browser client's actual input support is upstream-dependent.
  */
 const CHANNEL = 'wotlk-lab-client-v1';
+const STAGE_EVENT = 'wotlk-lab:upstream-stage';
+// Restricted fixed vocabulary: do not forward error messages, URLs or data.
+export const UPSTREAM_STAGES = Object.freeze([
+  'client-created', 'loading-ui', 'ui-loader-returned',
+  'resource-load-failed', 'first-render-call', 'render-failed',
+]);
+const ALLOWED_STAGES = new Set(UPSTREAM_STAGES);
 const ALLOWED_KEY_CODES = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD',
   'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5']);
 
@@ -22,6 +29,12 @@ export function createClientInputBridge({windowRef = globalThis.window,
   if (!windowRef || !documentRef || !parentOrigin) throw new Error('No browser context');
   const pressed = new Set();
   let nonce = null;
+  function forwardUpstreamStage() {
+    if (!nonce) return;
+    const stage = documentRef.documentElement?.getAttribute?.('data-wotlk-lab-stage');
+    if (!ALLOWED_STAGES.has(stage)) return;
+    windowRef.parent.postMessage({channel: CHANNEL, kind: 'upstream-stage', nonce, stage}, parentOrigin);
+  }
   const keyName = code => code.startsWith('Digit') ? code.slice(5) : code.slice(-1).toLowerCase();
   function key(code, down) {
     if (!ALLOWED_KEY_CODES.has(code) || pressed.has(code) === down) return;
@@ -43,6 +56,8 @@ export function createClientInputBridge({windowRef = globalThis.window,
       release();
       nonce = data.nonce;
       windowRef.parent.postMessage({channel: CHANNEL, kind: 'bridge-ready', nonce}, parentOrigin);
+      // The actual engine constructor can run before the iframe handshake.
+      forwardUpstreamStage();
       return;
     }
     if (data.kind !== 'input' || data.nonce !== nonce) return;
@@ -63,12 +78,14 @@ export function createClientInputBridge({windowRef = globalThis.window,
       release();
     }
   }
+  windowRef.addEventListener(STAGE_EVENT, forwardUpstreamStage);
   windowRef.addEventListener('message', handle);
   windowRef.addEventListener('blur', release);
   return {
     dispose() {
       release();
       windowRef.removeEventListener('message', handle);
+      windowRef.removeEventListener(STAGE_EVENT, forwardUpstreamStage);
       windowRef.removeEventListener('blur', release);
       nonce = null;
     },

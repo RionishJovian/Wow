@@ -4,6 +4,15 @@
  * All messages use an exact same-origin + source + nonce handshake.
  */
 const CHANNEL = 'wotlk-lab-client-v1';
+// Progress signals from the specifically instrumented Wowser UI (not gameplay).
+export const UPSTREAM_MESSAGES = Object.freeze({
+  'client-created': 'Wowser engine constructed; no gameplay verified',
+  'loading-ui': 'Wowser loading local UI resources',
+  'ui-loader-returned': 'Wowser UI loader returned; assets may still be incomplete',
+  'resource-load-failed': 'Wowser UI resource load failed; check permitted local assets',
+  'first-render-call': 'Wowser executed a UI render call; NOT world rendering',
+  'render-failed': 'Wowser UI rendering failed; inspect local developer console',
+});
 
 export function normalizeClientInput(input) {
   if (!input || typeof input !== 'object') return null;
@@ -43,6 +52,7 @@ export function createClientHost({
   let onState = () => {};
   let mounted = false;
   let ready = false;
+  let upstreamStage = null;
 
   const publish = (phase, detail) => onState({phase, detail});
   function clearHandshakeTimeout() {
@@ -57,6 +67,12 @@ export function createClientHost({
     if (!mounted || message.origin !== origin || message.source !== iframe.contentWindow) return;
     const payload = message.data;
     if (!payload || payload.channel !== CHANNEL || payload.nonce !== nonce) return;
+    if (payload.kind === 'upstream-stage' && ready &&
+        Object.hasOwn(UPSTREAM_MESSAGES, payload.stage)) {
+      upstreamStage = payload.stage;
+      publish('upstream-stage', UPSTREAM_MESSAGES[payload.stage]);
+      return;
+    }
     if (payload.kind === 'bridge-ready') {
       clearHandshakeTimeout();
       ready = true;
@@ -72,6 +88,7 @@ export function createClientHost({
   return {
     get mounted() { return mounted; },
     get inputReady() { return ready; },
+    get upstreamStage() { return upstreamStage; },
     async mount({element: target, onState: callback = () => {}} = {}) {
       if (mounted) throw new Error('Client host already mounted');
       if (!target || !documentRef || !windowRef || !origin ||
@@ -91,6 +108,7 @@ export function createClientHost({
       windowRef.addEventListener('message', onMessage);
       mounted = true;
       ready = false;
+      upstreamStage = null;
       element.replaceChildren(iframe);
       publish('loading', 'Loading locally installed browser client; not playable yet');
       timeout = setTimeoutRef(() => {
@@ -121,6 +139,7 @@ export function createClientHost({
       element = null;
       mounted = false;
       ready = false;
+      upstreamStage = null;
       nonce = null;
       publish('stopped', 'Client closed');
     },

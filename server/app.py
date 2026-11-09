@@ -20,7 +20,7 @@ from starlette.websockets import WebSocketDisconnect
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
-BUILD_VERSION = "0.3.0"
+BUILD_VERSION = "0.4.0"
 MAX_FRAME = 64 * 1024
 
 

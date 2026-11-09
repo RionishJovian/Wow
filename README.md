@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 03
+# WotLK Mobile Browser Lab — Build 04
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -40,6 +40,37 @@ game engine can run in Safari or Chrome. The project has **not** been tested
 on real Android/iOS hardware. Headless Chromium in the development sandbox lacks WebGL2,
 so shader compilation and live GPU output still need verification on real hardware.
 
+## Build 04: build a pinned upstream Wowser UI
+
+Build 04 adds **actual source integration** with the MIT-licensed
+[`wowserhq/client`](https://github.com/wowserhq/client) browser UI at a
+**fixed reviewed source commit** (see `scripts/prepare_wowser.py`). The script
+fetches that exact revision, builds the TypeScript/Vite project, adds a tiny
+instrumentation adapter, and installs the resulting UI locally.
+
+```bash
+python scripts/build_wowser_client.py  # needs Git, Node.js 22+, npm, network
+WOTLK_ENABLE_CLIENT=true python -m uvicorn server.app:app --host 127.0.0.1 --port 8765
+```
+
+This script will download and run pinned *open-source client build tooling* and
+npm dependencies, **not Blizzard assets**. Inspect the code/dependencies before
+running them on your computer. `--source ../wowser-client` also accepts an
+already cloned Git checkout **only at the pinned SHA** and leaves it unchanged;
+use `--force` to replace an existing local client installation.
+
+The client host now distinguishes **engine constructed**, **UI resource load**,
+**UI render invoked**, and **resource/render failure** through authenticated,
+fixed-status messages. These are precise instrumentation stages, **not** a
+claim that 3.3.5a login, gameplay, or world rendering works. The upstream
+production Vite build intentionally omits third-party game files, so required
+`Wowser/`, `Interface/` or `Shaders/` resources will be missing until legally
+sourced assets are provided *locally*. We neither copy nor upload them.
+
+A separate GitHub Actions job builds the pinned upstream UI *without assets*
+and publishes a temporary developer artifact. CI success confirms compilation
+and installation only; it does not test a game realm or mobile browsers.
+
 ## Build 03: mount a separately built browser client
 
 The new **Mount external client** button activates only after a client build
@@ -72,9 +103,10 @@ In a local lab only, it bridges `/ws/auth` to `127.0.0.1:3724` and `/ws/world` t
 
 1. **Build 01:** touch controls, status UI, isolated local diagnostic/gateway prototype.
 2. **Build 02:** original procedural WebGL2 renderer, input movement/camera, browser capability checks.
-3. **Build 03 (this commit):** optional external browser-client install, iframe lifecycle, nonce-bound input bridge and local-only client hosting.
-4. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
-5. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
+3. **Build 03:** optional external browser-client install, iframe lifecycle, nonce-bound input bridge and local-only client hosting.
+4. **Build 04 (this commit):** pinned upstream UI build and safe stage reporting; actual gameplay still unverified.
+5. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
+6. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
 
 ## Intellectual property and safety
 

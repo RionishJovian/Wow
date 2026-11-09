@@ -43,7 +43,9 @@ function restorePlaceholder() {
 function updateClientState(state) {
   const mounted = clientHost.mounted;
   $('client-host-status').textContent = state.detail;
-  $('client-host-status').className = state.phase === 'bridge-ready' ? 'good' : 'unavailable';
+  const good = state.phase === 'bridge-ready' ||
+    (state.phase === 'upstream-stage' && !['resource-load-failed', 'render-failed'].includes(clientHost.upstreamStage));
+  $('client-host-status').className = good ? 'good' : 'unavailable';
   $('launch-client').textContent = mounted ? 'Close external client' : 'Mount external client';
   $('render-label').textContent = mounted ? 'EXTERNAL CLIENT UI — GAMEPLAY NOT VERIFIED' : 'RENDERER NOT MOUNTED';
 }

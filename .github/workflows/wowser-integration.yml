@@ -1,0 +1,51 @@
+name: Upstream Wowser browser UI integration (no game assets)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/wowser-integration.yml'
+      - 'scripts/build_wowser_client.py'
+      - 'scripts/prepare_wowser.py'
+      - 'scripts/install_wowser.py'
+      - 'web/client_bridge.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-upstream-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build pinned MIT Wowser UI without Blizzard assets
+        run: python scripts/build_wowser_client.py --dest "$RUNNER_TEMP/wowser-ui"
+      - name: Verify integration report and required files
+        env:
+          ARTIFACT_PATH: ${{ runner.temp }}/wowser-ui
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from scripts.prepare_wowser import UPSTREAM_COMMIT
+          root = Path(os.environ['ARTIFACT_PATH'])
+          data = json.loads((root / 'lab-install.json').read_text())
+          assert data['provider'] == 'wowserhq/client'
+          assert data['source_commit'] == UPSTREAM_COMMIT
+          assert data['gameplay_verified'] is False
+          assert data['assets_bundled'] is False
+          for path in ('index.html', 'lab-bridge.mjs', 'WOWSER_LICENSE.txt'):
+              assert (root / path).is_file(), path
+          print('Browser UI build packaged, no gameplay claims.')
+          PY
+      - name: Upload optional local-development UI bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: wowser-ui-no-game-assets
+          path: ${{ runner.temp }}/wowser-ui/
+          retention-days: 7
