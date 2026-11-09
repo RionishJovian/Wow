@@ -15,11 +15,13 @@ from pathlib import Path
 
 if __package__:
     from .install_wowser import DEFAULT_DEST, install
+    from .verify_client_install import verify_installation
     from .prepare_wowser import (
         UPSTREAM_COMMIT, UPSTREAM_URL, WowserPreparationError, prepare, verify_checkout,
     )
 else:
     from install_wowser import DEFAULT_DEST, install
+    from verify_client_install import verify_installation
     from prepare_wowser import (
         UPSTREAM_COMMIT, UPSTREAM_URL, WowserPreparationError, prepare, verify_checkout,
     )
@@ -77,6 +79,8 @@ def build(*, source: Path | None = None, destination: Path = DEFAULT_DEST,
         report["gameplay_verified"] = False
         report["assets_bundled"] = False
         (destination.resolve() / "lab-install.json").write_text(json.dumps(report, indent=2) + "\n")
+        # Reject corruption and unrecorded files before treating the UI as installed.
+        verify_installation(destination)
         return report
 
 

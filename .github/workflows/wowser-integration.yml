@@ -8,13 +8,17 @@ on:
       - 'scripts/prepare_wowser.py'
       - 'scripts/install_wowser.py'
       - 'web/client_bridge.mjs'
+      - 'scripts/verify_client_install.py'
+      - 'scripts/smoke_wowser_browser.py'
+      - 'tests/test_client_verify.py'
+      - 'tests/test_browser_smoke.py'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   build-upstream-ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,7 +47,39 @@ jobs:
               assert (root / path).is_file(), path
           print('Browser UI build packaged, no gameplay claims.')
           PY
+      - name: Verify package hashes, license and embedded bridge
+        env:
+          ARTIFACT_PATH: ${{ runner.temp }}/wowser-ui
+        run: python -m scripts.verify_client_install --path "$ARTIFACT_PATH"
+      - name: Install headless Chromium for an asset-free UI smoke check
+        run: |
+          python -m pip install -r requirements.txt playwright
+          python -m playwright install --with-deps chromium
+      - name: Execute compiled UI startup smoke (not WoW gameplay)
+        env:
+          WOTLK_ENABLE_CLIENT: 'true'
+          WOTLK_CLIENT_DIR: ${{ runner.temp }}/wowser-ui
+        run: |
+          set -euo pipefail
+          python -m uvicorn server.app:app --host 127.0.0.1 --port 8765 > "$RUNNER_TEMP/wowser-server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          python - <<'PYBLOCK'
+          import time, urllib.request
+          url = 'http://127.0.0.1:8765/client/index.html'
+          for _ in range(40):
+              try:
+                  with urllib.request.urlopen(url, timeout=2) as response:
+                      if response.status == 200:
+                          break
+              except OSError:
+                  time.sleep(.25)
+          else:
+              raise SystemExit('Local client test server did not start')
+          PYBLOCK
+          python -m scripts.smoke_wowser_browser
       - name: Upload optional local-development UI bundle
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: wowser-ui-no-game-assets

@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 04
+# WotLK Mobile Browser Lab — Build 05
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -70,6 +70,26 @@ sourced assets are provided *locally*. We neither copy nor upload them.
 A separate GitHub Actions job builds the pinned upstream UI *without assets*
 and publishes a temporary developer artifact. CI success confirms compilation
 and installation only; it does not test a game realm or mobile browsers.
+
+## Build 05: verified Wowser compilation and startup diagnostics
+
+The pinned Wowser client source compiles to a standalone, **asset-free UI bundle**.
+Build 05 verifies the installed client package before its use in the development
+host. It checks the pin, file checksums, embedded bridge, local-only resource
+references, upstream license and rejects unexpected files or symlinks.
+
+```bash
+python -m scripts.verify_client_install --path .local-wowser-client
+```
+
+The GitHub Actions integration pipeline also loads the **real compiled
+JavaScript** in a headless Chromium page, requires WebGL2, and waits for
+an instrumented UI startup stage. **A missing-resource stage is expected and
+acceptable without Blizzard assets**. This test does not validate world
+rendering, login, character movement, game-server connectivity, or
+mobile Safari/Android Chrome compatibility. The sandbox's browser
+cannot access localhost due to administrative restrictions; rely on the
+independent CI run for this smoke result.
 
 ## Build 03: mount a separately built browser client
 

@@ -110,3 +110,7 @@ The installed client is excluded from version control.
 
 Publicly hosting Blizzard game assets or an unauthorized public realm poses
 separate intellectual-property and licensing issues.
+
+## Build 05 acceptance gate
+
+The pinned Wowser UI bundle is checked with `python -m scripts.verify_client_install` against SHA-256 checksums recorded before local bridge insertion. CI then starts the local client host and runs `python -m scripts.smoke_wowser_browser` in headless Chromium with WebGL2 enabled. A missing-resource startup stage is expected without game assets. Neither check certifies WotLK 3.3.5a login, world rendering, multiplayer connectivity, or mobile-browser support. The scripts do not retrieve or publish Blizzard content.
