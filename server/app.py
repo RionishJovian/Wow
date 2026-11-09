@@ -7,6 +7,7 @@ separate, lawful client runtime. Do not expose it to the public internet.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,8 +20,18 @@ from starlette.websockets import WebSocketDisconnect
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
-BUILD_VERSION = "0.1.0"
+BUILD_VERSION = "0.2.0"
 MAX_FRAME = 64 * 1024
+
+
+def is_loopback(host: str) -> bool:
+    """Fail closed: this opaque TCP bridge is strictly a loopback-only lab."""
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 @dataclass(frozen=True)
@@ -113,6 +124,13 @@ def create_app(config: Config | None = None) -> FastAPI:
         nonlocal live_connections
         if service not in {"auth", "world"} or not config.gateway_enabled:
             await ws.close(code=1008, reason="Gateway not enabled")
+            return
+        # Origin is browser-controlled, but non-browser clients can spoof it.
+        # Enforce BOTH loopback peer address and loopback upstreams; do not
+        # mistake an Origin allowlist for a production authentication system.
+        if not (ws.client and is_loopback(ws.client.host)
+                and is_loopback(config.auth_host) and is_loopback(config.world_host)):
+            await ws.close(code=1008, reason="Local-only bridge")
             return
         origin = ws.headers.get("origin", "")
         if origin not in config.allowed_origins:

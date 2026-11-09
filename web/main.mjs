@@ -1,14 +1,63 @@
 import { setupTouchInput } from './input.mjs';
 import { detectRuntime } from './runtime_adapter.mjs';
+import { createProbeRuntime } from './render_probe.mjs';
+import { probeCapabilities } from './capabilities.mjs';
 
 const $ = id => document.getElementById(id);
 const eventOut = $('input-event');
 const runtime = detectRuntime();
+const probeRuntime = createProbeRuntime();
+let probeBusy = false;
+const capabilities = probeCapabilities();
+$('webgl-support').textContent = capabilities.webgl2
+  ? `Supported · max texture ${capabilities.maxTextureSize}`
+  : 'Not available';
+$('wasm-support').textContent = capabilities.wasm ? 'Supported' : 'Not available';
+$('webgl-support').className = capabilities.webgl2 ? 'good' : 'unavailable';
+$('wasm-support').className = capabilities.wasm ? 'good' : 'unavailable';
+
+function updateRendererState(state) {
+  const isRunning = state.phase === 'running';
+  $('render-status').textContent = isRunning ? 'Original graphics test running' :
+    (state.detail || 'Graphics test stopped');
+  $('render-status').className = isRunning ? 'good' : 'unavailable';
+  $('fps-status').textContent = isRunning && Number.isFinite(state.fps) ? `${state.fps} FPS` : '—';
+  $('render-label').textContent = isRunning ? 'WEBGL2 TEST — NOT WOW' : 'RENDERER NOT MOUNTED';
+  $('start-render').textContent = isRunning ? 'Stop graphics test' : 'Start graphics test';
+}
+$('start-render').addEventListener('click', async () => {
+  if (probeBusy) return;
+  probeBusy = true;
+  $('start-render').disabled = true;
+  try {
+    if (probeRuntime.mounted) {
+      await probeRuntime.unmount();
+      // Rebuild the neutral placeholder without reusing old user HTML.
+      const placeholder = document.createElement('div');
+      placeholder.className = 'runtime-placeholder';
+      const title = document.createElement('strong');
+      title.textContent = 'World renderer not installed';
+      const detail = document.createElement('span');
+      detail.textContent = 'Graphics benchmark stopped; actual WoW client still pending';
+      placeholder.append(title, detail);
+      $('game-runtime').replaceChildren(placeholder);
+    } else {
+      await probeRuntime.mount({element: $('game-runtime'), onState: updateRendererState});
+    }
+  } catch (error) {
+    updateRendererState({phase: 'error', detail: `Rendering failed: ${error.message}`});
+  } finally {
+    $('start-render').disabled = false;
+    probeBusy = false;
+  }
+});
+
 let updateIndex = 0;
 function emitInput(event) {
   updateIndex += 1;
   // Only forward to an authentic runtime after it has been explicitly mounted.
-  if (runtime && runtime.mounted) runtime.onInput(event);
+  if (probeRuntime.mounted) probeRuntime.onInput(event);
+  else if (runtime && runtime.mounted) runtime.onInput(event);
   const fields = Object.entries(event).filter(([key]) => key !== 'type').map(([k, v]) => `${k}: ${v}`).join(' · ');
   eventOut.textContent = `#${updateIndex} ${event.type} ${fields}`;
 }

@@ -8,7 +8,7 @@ import uvicorn
 from websockets.asyncio.client import connect
 from websockets.exceptions import InvalidStatus
 
-from server.app import Config, create_app
+from server.app import Config, create_app, is_loopback
 
 
 def free_port():
@@ -87,3 +87,13 @@ async def test_disabled_bridge_is_not_open_proxy():
         with pytest.raises(InvalidStatus):
             async with connect(f"ws://127.0.0.1:{port}/ws/world", origin=f"http://127.0.0.1:{port}"):
                 pass
+
+
+def test_gateway_only_accepts_local_upstreams_and_loopback_addresses():
+    assert is_loopback("127.0.0.1")
+    assert is_loopback("::1")
+    assert is_loopback("localhost")
+    assert not is_loopback("example.org")
+    assert not is_loopback("8.8.8.8")
+    assert not is_loopback("192.168.0.20")
+    assert not is_loopback("")

@@ -1,8 +1,8 @@
-# WotLK Mobile Browser Lab — Build 01
+# WotLK Mobile Browser Lab — Build 02
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
-A standalone, mobile-first browser shell to evaluate a future **legally sourced** WotLK 3.3.5a-compatible runtime. It contains a touch joystick, action buttons, camera drag input, a diagnostics panel, and a **disabled-by-default**, byte-transparent WebSocket-to-TCP development bridge. There is **no** WoW authentication, character selection, rendering, game-server implementation, or game content included.
+A standalone, mobile-first browser shell to evaluate a future **legally sourced** WotLK 3.3.5a-compatible runtime. It contains a touch joystick, action buttons, camera drag input, browser WebAssembly/WebGL2 capability diagnostics, an **opt-in, original WebGL2 graphics test**, and a **disabled-by-default**, byte-transparent WebSocket-to-TCP development bridge. There is **no** WoW authentication, character selection, original WoW world rendering, game-server implementation, or game content included. The rendering test is a procedural, asset-free environment: **not the WoW world**.
 
 This repository is intentionally separate from MikroMagic/Mega-Magic and from any existing production hosting.
 
@@ -28,9 +28,21 @@ node --test tests/*.test.mjs   # optional Node.js 20+ JS tests
 
 The browser interface works without a game server. The `/api/health` endpoint explicitly says `gameplay_ready: false`. `/api/realm-status` tests only TCP reachability, not authentic gameplay readiness.
 
+## Build 02 graphics test
+
+Select **Start graphics test** in the Touch controls lab. It draws a completely original
+procedural landscape in WebGL2, responds to joystick/WASD movement, camera drag, and action
+buttons, and displays approximate FPS. It caps rendering around 30 FPS to reduce unnecessary
+battery use. **No WoW client, real game assets, or live characters are involved.**
+
+This is a browser rendering and input feasibility check, not proof that a 3.3.5a
+game engine can run in Safari or Chrome. The project has **not** been tested
+on real Android/iOS hardware. Headless Chromium in the development sandbox lacks WebGL2,
+so shader compilation and live GPU output still need verification on real hardware.
+
 ## Optional local gateway — development only
 
-The gateway is **off by default**, and must never be exposed as a public unauthenticated TCP proxy. Configuration is in `.env.example`, but no `.env` file is loaded automatically: supply environment variables to the launch process. An allowlisted browser Origin is necessary, **not sufficient authentication**. The configured upstream hosts and ports must be controlled, local development endpoints.
+The gateway is **off by default**, rejects non-loopback WebSocket peers and non-loopback configured upstreams, and must never be exposed as a public unauthenticated TCP proxy. Configuration is in `.env.example`, but no `.env` file is loaded automatically: supply environment variables to the launch process. An allowlisted browser Origin is necessary, **not sufficient authentication**. The configured upstream hosts and ports must be controlled, local development endpoints.
 
 ```bash
 WOTLK_ENABLE_GATEWAY=true WOTLK_ALLOWED_ORIGINS=http://127.0.0.1:8765 \
@@ -45,9 +57,10 @@ In a local lab only, it bridges `/ws/auth` to `127.0.0.1:3724` and `/ws/world` t
 
 ### Intended milestones
 
-1. **Build 01 (this repo):** touch controls, status UI, isolated local diagnostic/gateway prototype, tests.
-2. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
-3. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
+1. **Build 01:** touch controls, status UI, isolated local diagnostic/gateway prototype.
+2. **Build 02 (this commit):** original procedural WebGL2 scene, normalized live movement/camera input, graphics capability checks, loopback gateway hardening, tests.
+3. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
+4. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
 
 ## Intellectual property and safety
 
