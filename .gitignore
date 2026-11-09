@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.log
+*.mpq
+*.MPQ
+Wow/
+Data/
+WTF/
+client-assets/
+*.wasm
+*.dll
+*.exe

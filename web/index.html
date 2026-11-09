@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1320" />
+  <meta name="description" content="A mobile-first engineering environment for evaluating a real World of Warcraft 3.3.5a browser runtime." />
+  <link rel="manifest" href="/assets/manifest.webmanifest" />
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <title>WotLK Browser Lab — Build 01</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a href="#home" class="brand" aria-label="Browser Lab home"><span class="brand-mark" aria-hidden="true">✦</span><span>WOTLK<span class="brand-light"> / LAB</span></span></a>
+      <span class="header-caption">335A · MOBILE FIRST</span>
+      <span class="build-chip">BUILD 01</span>
+    </header>
+
+    <main id="home">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow"><span class="little-diamond"></span> BROWSER CLIENT ENGINEERING</p>
+        <h1 id="page-title">A gateway to <em>Azeroth.</em></h1>
+        <p class="intro">The foundation for a real <strong>Wrath of the Lich King 3.3.5a</strong> browser client. Designed for touch first, built to expand to desktop.</p>
+        <div class="notice" role="status"><span class="notice-icon">!</span><span><strong>Engineering preview, not a playable game.</strong> Original WoW gameplay requires a compatible browser runtime and legally supplied game data. Neither is included.</span></div>
+        <div class="hero-buttons">
+          <a class="button button-primary" href="#controls">Try mobile controls <span aria-hidden="true">↗</span></a>
+          <a class="button button-outline" href="#diagnostics">Check connections</a>
+        </div>
+      </section>
+
+      <section class="three-metrics" aria-label="Project status">
+        <article class="metric-card"><span class="metric-label">CLIENT ENGINE</span><div class="metric-value">Not integrated</div><p>Authentic 3.3.5a world rendering pending.</p></article>
+        <article class="metric-card"><span class="metric-label">TRANSPORT</span><div class="metric-value" id="gateway-indicator">Checking…</div><p>Local browser-to-TCP gateway.</p></article>
+        <article class="metric-card"><span class="metric-label">SCALE OBJECTIVE</span><div class="metric-value">500–1,000</div><p>Concurrent players; untested target.</p></article>
+      </section>
+
+      <section id="controls" class="section controls-section" aria-labelledby="controls-title">
+        <div class="section-head"><div><p class="eyebrow">01 / INPUT SYSTEM</p><h2 id="controls-title">Touch controls lab</h2></div><span class="small-tag">WORKING PROTOTYPE</span></div>
+        <p class="section-intro">Move the joystick, touch action buttons, or drag to pan. The input events are generated locally; they are <strong>not yet controlling a WoW character</strong>.</p>
+        <div class="control-stage" id="control-stage">
+          <div class="control-stage-heading"><span class="control-label"><span class="pulse"></span> CONTROL INPUT LIVE</span><span class="stage-angle">LANDSCAPE PREVIEW</span></div>
+          <div id="game-runtime" class="game-runtime" aria-label="Game runtime mount point"><div class="runtime-placeholder"><span class="rune">✦</span><strong>World renderer not installed</strong><span>Ready for a compatible WebAssembly / WebGL client</span></div></div>
+          <div class="aim-pad" id="camera-pad" aria-label="Camera drag input"></div>
+          <div class="hud-layer" id="hud-layer">
+            <div class="joystick-zone" id="joystick" role="group" aria-label="Virtual movement joystick" tabindex="0"><div class="joystick-ring"><div class="joystick-knob" id="joystick-knob"></div></div><span>MOVE</span></div>
+            <div class="action-zone" id="actions" aria-label="Action buttons">
+              <button type="button" class="action-key action-top" data-action="4" aria-label="Action 4">4</button>
+              <button type="button" class="action-key action-left" data-action="1" aria-label="Action 1">1</button>
+              <button type="button" class="action-key action-middle" data-action="2" aria-label="Action 2">2</button>
+              <button type="button" class="action-key action-right" data-action="3" aria-label="Action 3">3</button>
+              <button type="button" class="action-key action-bottom" data-action="5" aria-label="Action 5">5</button>
+            </div>
+          </div>
+        </div>
+        <div class="input-console"><span class="console-indicator"></span><code id="input-event" aria-live="polite">Waiting for input…</code><button type="button" class="small-button" id="reset-controls">Reset layout</button></div>
+        <div class="settings-line"><label for="joystick-sensitivity">Joystick sensitivity <output id="sensitivity-output">100%</output></label><input type="range" id="joystick-sensitivity" min="50" max="150" step="10" value="100" /><label class="checkbox-control"><input type="checkbox" id="left-handed" /> Left-handed layout</label></div>
+      </section>
+
+      <section id="diagnostics" class="section" aria-labelledby="diagnostics-title"><div class="section-head"><div><p class="eyebrow">02 / SYSTEM CHECKS</p><h2 id="diagnostics-title">Connection diagnostics</h2></div></div><p class="section-intro">These checks verify local services and TCP reachability. They do not prove the game protocol or gameplay works.</p>
+        <div class="diagnostic-grid"><div class="diagnostic-item"><span>Browser gateway</span><strong id="service-status">Checking…</strong></div><div class="diagnostic-item"><span>AzerothCore auth TCP</span><strong id="auth-status">Not checked</strong></div><div class="diagnostic-item"><span>AzerothCore world TCP</span><strong id="world-status">Not checked</strong></div><div class="diagnostic-item"><span>Playable game client</span><strong class="unavailable">Not installed</strong></div></div>
+        <button class="button button-outline diagnostic-button" type="button" id="check-status">Run checks <span aria-hidden="true">↻</span></button>
+        <p class="small-note">Connect an AzerothCore development realm and a verified 3.3.5a client runtime before game login becomes available. No accounts are created by this prototype.</p>
+      </section>
+
+      <section class="section roadmap" id="roadmap"><div class="section-head"><div><p class="eyebrow">03 / DELIVERY GATES</p><h2>Path to a playable realm</h2></div></div><div class="step-list"><div class="step"><span class="step-number done">01</span><div><strong>Browser shell + touch input + safe local gateway</strong><p>Built here. No game content bundled.</p></div><span class="step-tag done">BUILT</span></div><div class="step"><span class="step-number">02</span><div><strong>Client engine feasibility</strong><p>Port or adapt a compatible client; prove world rendering and authenticated movement in mobile Chrome and Safari.</p></div><span class="step-tag">BLOCKING</span></div><div class="step"><span class="step-number">03</span><div><strong>Community platform and load testing</strong><p>Account management, admin tools, backups and sustained 500 → 1,000 concurrent-player tests.</p></div><span class="step-tag">PLANNED</span></div></div></section>
+    </main>
+    <footer><span>WOTLK / LAB — BUILD 01</span><span>Independent engineering prototype. No Blizzard assets, trademarks or client code included.</span></footer>
+  </div>
+  <script type="module" src="/assets/main.mjs"></script>
+</body>
+</html>
