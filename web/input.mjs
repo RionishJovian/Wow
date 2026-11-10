@@ -1,9 +1,16 @@
 /** Browser input transport. Normalized events only; no WoW protocol assumptions. */
-export function setupTouchInput({joystick, knob, actions, camera, onEvent, sensitivity = 1}) {
+export function setupTouchInput({joystick, knob, actions, camera, onEvent, sensitivity = 1,
+  page = globalThis.document, view = globalThis.window}) {
   let active = null;
   let factor = sensitivity;
   let last = null;
+  const actionResets = [];
   const emit = (type, values) => onEvent({ type, ...values });
+  function dropCapture(element, id) {
+    try {
+      if (id !== null && element.hasPointerCapture?.(id)) element.releasePointerCapture(id);
+    } catch { /* A browser may invalidate capture while backgrounding. */ }
+  }
   function setJoystick(dx, dy) {
     const limit = Math.max(1, joystick.querySelector('.joystick-ring').getBoundingClientRect().width * 0.32);
     const distance = Math.hypot(dx, dy);
@@ -27,10 +34,12 @@ export function setupTouchInput({joystick, knob, actions, camera, onEvent, sensi
   joystick.addEventListener('pointermove', moveEvent);
   function resetJoystick(e) {
     if (e.pointerId !== active) return;
+    const previous = active;
     active = null;
     knob.style.setProperty('--joy-x', '0px');
     knob.style.setProperty('--joy-y', '0px');
     emit('move', { x: 0, y: 0 });
+    dropCapture(joystick, previous);
   }
   joystick.addEventListener('pointerup', resetJoystick);
   joystick.addEventListener('pointercancel', resetJoystick);
@@ -46,10 +55,13 @@ export function setupTouchInput({joystick, knob, actions, camera, onEvent, sensi
     });
     function release(e) {
       if (pointer !== e.pointerId) return;
+      const previous = pointer;
       pointer = null;
       button.classList.remove('is-pressed');
       emit('action', { index: Number(button.dataset.action), down: false });
+      dropCapture(button, previous);
     }
+    actionResets.push(() => { if (pointer !== null) release({pointerId: pointer}); });
     button.addEventListener('pointerup', release);
     button.addEventListener('pointercancel', release);
     button.addEventListener('lostpointercapture', release);
@@ -69,5 +81,16 @@ export function setupTouchInput({joystick, knob, actions, camera, onEvent, sensi
   camera.addEventListener('pointerup', releaseCamera);
   camera.addEventListener('pointercancel', releaseCamera);
   camera.addEventListener('lostpointercapture', releaseCamera);
-  return { setSensitivity: value => { factor = value; } };
+  // Mobile app-switching, tab hiding and page teardown must never leave held keys.
+  function reset() {
+    if (active !== null) resetJoystick({pointerId: active});
+    for (const release of actionResets) release();
+    const previous = last?.id ?? null;
+    last = null;
+    dropCapture(camera, previous);
+  }
+  view?.addEventListener?.('blur', reset);
+  view?.addEventListener?.('pagehide', reset);
+  page?.addEventListener?.('visibilitychange', () => { if (page.hidden) reset(); });
+  return { setSensitivity: value => { factor = value; }, reset };
 }

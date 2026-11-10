@@ -1,4 +1,5 @@
 import { setupTouchInput } from './input.mjs';
+import { setupKeyboardInput } from './keyboard_lifecycle.mjs';
 import { detectRuntime } from './runtime_adapter.mjs';
 import { createProbeRuntime } from './render_probe.mjs';
 import { createOriginalWorldRuntime } from './original_world.mjs';
@@ -281,26 +282,8 @@ $('reset-controls').addEventListener('click', () => {
 applyPrefs();
 
 // Desktop keys help test one shared input contract for mobile and desktop.
-const pressed = new Set();
-const keyMap = { KeyW: [0, 1], KeyS: [0, -1], KeyA: [-1, 0], KeyD: [1, 0] };
-function keyboardMovement() {
-  let x = 0, y = 0;
-  for (const key of pressed) {
-    if (keyMap[key]) { x += keyMap[key][0]; y += keyMap[key][1]; }
-  }
-  const mag = Math.max(1, Math.hypot(x, y));
-  emitInput({ type: 'move', x: Math.round(x / mag * 100) / 100, y: Math.round(y / mag * 100) / 100 });
-}
-window.addEventListener('keydown', e => {
-  if (e.repeat || e.target instanceof HTMLInputElement) return;
-  if (keyMap[e.code]) { pressed.add(e.code); keyboardMovement(); }
-  if (/^Digit[1-5]$/.test(e.code)) emitInput({type:'action', index: Number(e.code.slice(-1)), down:true });
-});
-window.addEventListener('keyup', e => {
-  if (keyMap[e.code]) { pressed.delete(e.code); keyboardMovement(); }
-  if (/^Digit[1-5]$/.test(e.code)) emitInput({type:'action', index: Number(e.code.slice(-1)), down:false });
-});
-window.addEventListener('blur', () => { if (pressed.size) { pressed.clear(); keyboardMovement(); } });
+// Keyup events are not guaranteed after mobile app switching or page hiding.
+setupKeyboardInput({view:window,page:document,onEvent:emitInput});
 
 async function refreshStatus() {
   const button = $('check-status');

@@ -343,3 +343,11 @@ python -m pytest tests/test_world_probe.py -q
 ```
 
 See [Build 16 verification notes](docs/MOBILE_AND_WORLD_VALIDATION.md).
+
+## Build 17 — interrupted input recovery
+
+Touch movement, action buttons, camera drag, and WASD/action keys now release
+when a browser tab becomes hidden or the user switches apps. Late pointer-capture
+or keyup events cannot duplicate releases. Keyboard shortcuts ignore text fields.
+This is offline control reliability work, not a real WoW login or gameplay test.
+See [touch lifecycle](docs/TOUCH_LIFECYCLE.md).
