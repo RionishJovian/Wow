@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 16
+# WotLK Mobile Browser Lab — Build 19
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -365,3 +365,15 @@ the combined runtime state before sending `layout_reset`.
 
 Check: `node --test tests/input_mixer.test.mjs`. This is original offline demo
 input reliability, **not** authentic WotLK gameplay or real-device validation.
+
+
+## Build 19 — background-tab rendering lifecycle
+
+The offline WebGL2 scene now cancels its scheduled animation frame immediately
+when the browser page becomes hidden, clears held movement and jump, and resumes
+with fresh frame timing only when visible. This avoids hidden-tab RAF churn,
+resumed movement drift, and false FPS/quality sampling after app switches.
+The standalone visibility-loop module is tested by six deterministic Node tests;
+the complete JavaScript and Python suites and Chromium smoke run in GitHub CI.
+No WotLK assets, real gameplay, credentials, or external endpoints are added.
+See [frame lifecycle details](docs/FRAME_LIFECYCLE.md).

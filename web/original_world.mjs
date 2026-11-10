@@ -6,6 +6,7 @@
  */
 import {initialMission,missionProgress,missionStatus,collectNearbyBeacon} from './original_world_mission.mjs';
 import {createAdaptiveResolution} from './mobile_quality.mjs';
+import {createVisibleFrameLoop} from './visible_frame_loop.mjs';
 const TAU = Math.PI * 2;
 const MOVE_SPEED = 4.2;
 const GRAVITY = 14;
@@ -209,7 +210,7 @@ function programFor(gl) {
 export function createOriginalWorldRuntime({documentRef = globalThis.document,
   raf = globalThis.requestAnimationFrame?.bind(globalThis),
   cancelRaf = globalThis.cancelAnimationFrame?.bind(globalThis)} = {}) {
-  let gl = null, canvas = null, gpu = null, vao = null, observer = null, frameId = 0;
+  let gl = null, canvas = null, gpu = null, vao = null, observer = null, frameLoop = null;
   let world = initialWorld(), mission=initialMission(), mounted = false, callback = () => {}, fps = 0;
   let previous = 0, sampled = 0, frames = 0;
   const quality = createAdaptiveResolution();
@@ -249,18 +250,17 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
         canvas.addEventListener('webglcontextlost', e=>{
           e.preventDefault();
           mounted=false;
-          if(frameId)cancelRaf(frameId);
-          frameId=0; status('lost','Graphics context lost; restart the demo');
+          frameLoop?.stop();
+          status('lost','Graphics context lost; restart the demo');
         });
         mounted=true;previous=0;sampled=0;frames=0;fps=0;
         status('running','Original offline world · '+missionStatus(mission,world)+' · no game server');
         function frame(now){
           if(!mounted)return;
           if(!previous) {previous=now;sampled=now;}
-          if(now-previous<30){frameId=raf(frame);return;}
+          if(now-previous<30)return;
           const elapsed=now-previous;
           const dt=Math.min(.05,elapsed/1000);previous=now;
-          if(documentRef.hidden){frameId=raf(frame);return;}
           if(quality.sampleFrame(elapsed))resize();
           world=stepWorld(world,dt);
           gl.useProgram(gpu);gl.bindVertexArray(vao);
@@ -273,9 +273,15 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
           frames++;
           if(now-sampled>=1200){fps=Math.round(frames*1000/(now-sampled));frames=0;sampled=now;
             status('running','Original offline world · '+missionStatus(mission,world)+' · no game server');}
-          frameId=raf(frame);
         }
-        frameId=raf(frame);
+        frameLoop = createVisibleFrameLoop({
+          page: documentRef, raf, cancelRaf, onFrame: frame,
+          // App switching must not leave stale movement or a queued jump.
+          onHide() { world = applyWorldInput(world, {type: 'layout_reset'}); },
+          // The time spent backgrounded must not count as a physics frame.
+          onShow() { previous = 0; sampled = 0; frames = 0; },
+        });
+        frameLoop.start();
       } catch(error) {await runtime.unmount();throw error;}
     },
     onInput(event){
@@ -290,7 +296,7 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
       world=applyWorldInput(world,event);
     },
     async unmount(){
-      mounted=false;if(frameId&&cancelRaf)cancelRaf(frameId);frameId=0;
+      mounted=false;frameLoop?.stop();frameLoop=null;
       if(observer)observer.disconnect();observer=null;
       if(gl&&vao)gl.deleteVertexArray(vao);
       if(gl&&gpu)gl.deleteProgram(gpu);
