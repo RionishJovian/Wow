@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 19
+# WotLK Mobile Browser Lab — Build 20
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -377,3 +377,23 @@ The standalone visibility-loop module is tested by six deterministic Node tests;
 the complete JavaScript and Python suites and Chromium smoke run in GitHub CI.
 No WotLK assets, real gameplay, credentials, or external endpoints are added.
 See [frame lifecycle details](docs/FRAME_LIFECYCLE.md).
+
+
+## Build 20 — real-worldserver acceptance gate (manual, pending)
+
+A credential-safe, one-shot local acceptance CLI and full *offline* dual-server
+SRP6 → realm → world-auth → character-enum regression now exist. The runner
+checks the worldserver's initial packet **before** asking for a disposable
+password, refuses non-LAB accounts/remote endpoints, and outputs only sanitized
+booleans and a character count. Nonempty roster evidence is opt-in/mandatory
+with `--require-character`. It never attempts character login or gameplay.
+
+```sh
+python -m scripts.azerothcore_world_acceptance --account LABTEST --realm-id 1 --require-character
+python -m pytest tests/test_world_acceptance.py -q
+```
+
+**A genuine AzerothCore worldserver is NOT verified** until an authorized local
+instance with privately supplied world data is available and the one-shot CLI
+passes against it. No server/client assets, real account credentials or game data
+are included. See [Build 20 manual acceptance gate](docs/AZEROTHCORE_WORLD_ACCEPTANCE.md).
