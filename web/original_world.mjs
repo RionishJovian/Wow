@@ -5,6 +5,7 @@
  * be tested without a GPU, browser or network access.
  */
 import {initialMission,missionProgress,missionStatus,collectNearbyBeacon} from './original_world_mission.mjs';
+import {createAdaptiveResolution} from './mobile_quality.mjs';
 const TAU = Math.PI * 2;
 const MOVE_SPEED = 4.2;
 const GRAVITY = 14;
@@ -211,15 +212,16 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
   let gl = null, canvas = null, gpu = null, vao = null, observer = null, frameId = 0;
   let world = initialWorld(), mission=initialMission(), mounted = false, callback = () => {}, fps = 0;
   let previous = 0, sampled = 0, frames = 0;
+  const quality = createAdaptiveResolution();
   function status(phase,detail) { callback({phase,detail,fps}); }
   const runtime = {
     apiVersion:1,
     get mounted() {return mounted;},
-    get stats() {return {fps,...world,beaconsCollected:missionProgress(mission).count,missionComplete:missionProgress(mission).complete,mode:'original-offline-demo',networkConnected:false};},
+    get stats() {return {fps,...world,renderScale:quality.scale,renderPixels:canvas ? canvas.width*canvas.height : 0,beaconsCollected:missionProgress(mission).count,missionComplete:missionProgress(mission).complete,mode:'original-offline-demo',networkConnected:false};},
     async mount({element, avatar='sentinel', onState=()=>{}} = {}) {
       if (mounted) return;
       if (!element || !documentRef || !raf || !cancelRaf) throw new Error('World demo requires browser rendering APIs');
-      world = initialWorld(avatar); mission=initialMission(); callback = onState;
+      world = initialWorld(avatar); mission=initialMission(); quality.reset(); callback = onState;
       canvas = documentRef.createElement('canvas');
       canvas.className = 'render-canvas';
       canvas.setAttribute('aria-label','Original offline 3D exploration demo, not World of Warcraft');
@@ -237,10 +239,10 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
         const resize=()=>{
           if(!gl||!canvas)return;
           const rect=element.getBoundingClientRect();
-          const ratio=Math.min(1.5,globalThis.devicePixelRatio||1);
-          canvas.width=Math.max(1,Math.min(1280,Math.round(rect.width*ratio)));
-          canvas.height=Math.max(1,Math.min(720,Math.round(rect.height*ratio)));
-          gl.viewport(0,0,canvas.width,canvas.height);
+          const {width,height}=quality.resolution(rect.width,rect.height,globalThis.devicePixelRatio||1);
+          if(canvas.width!==width||canvas.height!==height){
+            canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height);
+          }
         };
         resize();
         if(typeof ResizeObserver!=='undefined'){observer=new ResizeObserver(resize);observer.observe(element);}
@@ -256,8 +258,11 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
           if(!mounted)return;
           if(!previous) {previous=now;sampled=now;}
           if(now-previous<30){frameId=raf(frame);return;}
-          const dt=Math.min(.05,(now-previous)/1000);previous=now;
-          if(!documentRef.hidden)world=stepWorld(world,dt);
+          const elapsed=now-previous;
+          const dt=Math.min(.05,elapsed/1000);previous=now;
+          if(documentRef.hidden){frameId=raf(frame);return;}
+          if(quality.sampleFrame(elapsed))resize();
+          world=stepWorld(world,dt);
           gl.useProgram(gpu);gl.bindVertexArray(vao);
           gl.uniform4f(player,world.x,world.z,world.height,world.facing);
           gl.uniform4f(camera,world.yaw,world.pitch,world.energy,now/1000);

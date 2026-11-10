@@ -70,10 +70,12 @@ def run(*, screenshot: Path | None = None) -> dict:
             if screenshot:
                 page.screenshot(path=str(screenshot), full_page=True)
             state = page.evaluate('window.world.stats')
-            return {'browser_render_passed': not failures, 'stage': stage,
+            return {'browser_render_passed': not failures and 0 < state['renderPixels'] <= 550_000, 'stage': stage,
                     'movement_verified': state['traveled'] > .15,
                     'jump_input_verified': True,
                     'beacon_collect_verified': state['beaconsCollected'] == 1,
+                    'quality_budget_verified': 0 < state['renderPixels'] <= 550_000,
+                    'render_pixels': state['renderPixels'], 'render_scale': state['renderScale'],
                     'avatar': state['avatar'], 'gameplay_verified': False,
                     'game_server_connected': False}
         finally:

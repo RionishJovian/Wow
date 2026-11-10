@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 12
+# WotLK Mobile Browser Lab — Build 16
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -321,3 +321,25 @@ Action 3 to collect a nearby beacon and Action 4 to reset. This is a controlled
 local interaction test, **not World of Warcraft gameplay**. The original-world
 Chromium smoke now checks actual pickup and movement. See
 [Build 15 interaction lab](docs/ORIGINAL_WORLD_MISSIONS.md).
+
+## Build 16 — mobile performance and worldserver preflight
+
+The offline exploration renderer now uses an adaptive mobile framebuffer
+budget (maximum 550,000 pixels / 1,280 on the longest edge), with hysteresis
+to lower resolution after sustained frame slowness and recover cautiously.
+Drawing is suspended while the page is hidden; quality diagnostics expose
+renderScale and renderPixels. This is a heuristic, **not an FPS improvement
+measured on iOS/Android**.
+
+A separate **credential-free** worldserver preflight reads only the 40-byte
+3.3.5a-format `SMSG_AUTH_CHALLENGE` from an owned local server. It never logs
+in or sends packets, and a format match **does not prove server identity**.
+No real worldserver was available, so its tests use isolated fake services.
+
+```sh
+python -m scripts.azerothcore_world_probe --host 127.0.0.1 --port 8085
+node --test tests/mobile_quality.test.mjs
+python -m pytest tests/test_world_probe.py -q
+```
+
+See [Build 16 verification notes](docs/MOBILE_AND_WORLD_VALIDATION.md).
