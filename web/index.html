@@ -8,14 +8,14 @@
   <link rel="manifest" href="/assets/manifest.webmanifest" />
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/assets/styles.css" />
-  <title>WotLK Browser Lab — Build 04</title>
+  <title>WotLK Browser Lab — Build 10</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a href="#home" class="brand" aria-label="Browser Lab home"><span class="brand-mark" aria-hidden="true">✦</span><span>WOTLK<span class="brand-light"> / LAB</span></span></a>
       <span class="header-caption">335A · MOBILE FIRST</span>
-      <span class="build-chip">BUILD 04</span>
+      <span class="build-chip">BUILD 10</span>
     </header>
 
     <main id="home">
@@ -71,9 +71,22 @@
         <p class="small-note">Connect an AzerothCore development realm and a verified 3.3.5a client runtime before game login becomes available. No accounts are created by this prototype.</p>
       </section>
 
-      <section class="section roadmap" id="roadmap"><div class="section-head"><div><p class="eyebrow">03 / DELIVERY GATES</p><h2>Path to a playable realm</h2></div></div><div class="step-list"><div class="step"><span class="step-number done">01</span><div><strong>Browser shell + touch input + external client host</strong><p>Original WebGL2 test and opt-in local client hosting implemented; game still unverified.</p></div><span class="step-tag done">BUILT</span></div><div class="step"><span class="step-number">02</span><div><strong>Actual WotLK gameplay feasibility</strong><p>Integrate upstream-specific input APIs and prove login, world rendering and character movement on real Android and iPhone devices.</p></div><span class="step-tag">BLOCKING</span></div><div class="step"><span class="step-number">03</span><div><strong>Community platform and load testing</strong><p>Account management, admin tools, backups and sustained 500 → 1,000 concurrent-player tests.</p></div><span class="step-tag">PLANNED</span></div></div></section>
+      <section id="auth-lab" class="section" aria-labelledby="auth-lab-title">
+        <div class="section-head"><div><p class="eyebrow">03 / LOCAL PROTOCOL LAB</p><h2 id="auth-lab-title">AzerothCore authentication</h2></div><span class="small-tag">LOOPBACK ONLY</span></div>
+        <p class="section-intro">Experimental WotLK 3.3.5a SRP6 authentication over the disabled-by-default local gateway. Use a <strong>disposable lab account only</strong>. This is not WoW gameplay, and does not open a world session.</p>
+        <form id="auth-lab-form" autocomplete="off" class="auth-lab-form">
+          <label>Disposable account <input id="lab-username" maxlength="16" required spellcheck="false" autocapitalize="characters" autocomplete="off" placeholder="LABUSER" /></label>
+          <label>Disposable password <input id="lab-password" type="password" maxlength="64" required autocomplete="off" placeholder="Lab-only password" /></label>
+          <button id="lab-login" class="button button-outline" type="submit" disabled>Test SRP6 &amp; realm list</button>
+        </form>
+        <p id="lab-login-status" class="small-note" role="status" aria-live="polite">Requires this page on localhost and WOTLK_ENABLE_GATEWAY=true.</p>
+        <ul id="lab-realms" class="lab-realms" aria-label="Local lab realm results"></ul>
+        <p class="small-note">No password, client proof or session key is saved or logged. Legacy SHA-1 SRP6 is not audited for production use; no TLS/server-identity guarantee. The gateway remains disabled by default.</p>
+      </section>
+
+      <section class="section roadmap" id="roadmap"><div class="section-head"><div><p class="eyebrow">04 / DELIVERY GATES</p><h2>Path to a playable realm</h2></div></div><div class="step-list"><div class="step"><span class="step-number done">01</span><div><strong>Browser shell + touch input + external client host</strong><p>Original WebGL2 test and opt-in local client hosting implemented; game still unverified.</p></div><span class="step-tag done">BUILT</span></div><div class="step"><span class="step-number">02</span><div><strong>Actual WotLK gameplay feasibility</strong><p>Integrate upstream-specific input APIs and prove login, world rendering and character movement on real Android and iPhone devices.</p></div><span class="step-tag">BLOCKING</span></div><div class="step"><span class="step-number">03</span><div><strong>Community platform and load testing</strong><p>Account management, admin tools, backups and sustained 500 → 1,000 concurrent-player tests.</p></div><span class="step-tag">PLANNED</span></div></div></section>
     </main>
-    <footer><span>WOTLK / LAB — BUILD 04</span><span>Independent engineering prototype. No Blizzard assets, trademarks or client code included.</span></footer>
+    <footer><span>WOTLK / LAB — BUILD 10</span><span>Independent engineering prototype. No Blizzard assets, trademarks or client code included.</span></footer>
   </div>
   <script type="module" src="/assets/main.mjs"></script>
 </body>

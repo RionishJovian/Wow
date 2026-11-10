@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 09
+# WotLK Mobile Browser Lab — Build 10
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -246,3 +246,30 @@ This implementation is **experimental, not security-audited**, and intended for
 one-shot isolated testing. It does not connect to the worldserver or enable
 playable gameplay. See [AzerothCore protocol lab](docs/AZEROTHCORE_LAB.md) for
 exact test evidence, precautions, and remaining gates.
+
+## Build 10 — browser SRP6 and realm list over the local gateway
+
+Build 10 implements 3.3.5a SRP6 authentication **inside the browser**, not only
+in the Python laboratory utility. `web/azerothcore_browser_auth.mjs` uses WebCrypto
+SHA-1, JS BigInt, an arbitrary-chunk binary WebSocket reader, M1/M2 proof checks,
+and a bounded realm-list decoder. Deterministic tests compare outputs to the
+independent Python Build 09 test vector and simulate an entire auth/realm session
+with fragmented WebSocket frames. The UI has a separate **Local protocol lab**
+form and does not persist the password (browser password managers are separate); the form is enabled only from a loopback
+page when the local gateway is explicitly enabled. This code is not audited and
+is NOT suitable for public authentication or valuable account credentials.
+
+To evaluate **only** with your own separately installed AzerothCore authserver
+and a disposable account:
+
+```sh
+WOTLK_ENABLE_GATEWAY=true python -m uvicorn server.app:app --host 127.0.0.1 --port 8765
+# Open http://127.0.0.1:8765 and navigate to Local protocol lab.
+```
+
+Gateway target remains fixed to **127.0.0.1:3724** by default and rejects
+nonloopback upstream/peers. Build 10 only verifies an authserver SRP6 proof and
+realm list: it does **not** start worldserver, enter the game, render WotLK assets,
+or claim compatibility with real iOS/Android hardware. A real AzerothCore server
+has not yet been tested in this environment. Do not publish the gateway or expose
+it outside the loopback lab.

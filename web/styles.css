@@ -105,3 +105,13 @@ body.left-handed .hud-layer { flex-direction: row-reverse; }
 .control-stage.client-active .aim-pad { pointer-events: none; }
 .control-stage.client-active.camera-capture .aim-pad { pointer-events: auto; }
 .camera-toggle[hidden] { display: none; }
+
+/* Build 10: opt-in, loopback-only SRP6 interoperability lab */
+.auth-lab-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 14px; }
+.auth-lab-form label { display: grid; gap: 9px; color: var(--subtle); font-size: 12px; }
+.auth-lab-form input { width: 100%; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+.auth-lab-form input::placeholder { color: #82939b; }
+.auth-lab-form .button:disabled { opacity: .45; cursor: not-allowed; }
+.lab-realms { list-style: none; padding: 0; margin: 0; }
+.lab-realms li { border: 1px solid var(--line); padding: 14px 17px; margin: 7px 0; border-radius: 6px; color: var(--aqua); font-size: 13px; }
+@media (max-width: 800px) { .auth-lab-form { grid-template-columns: 1fr; }.auth-lab-form .button { width: 100%; } }

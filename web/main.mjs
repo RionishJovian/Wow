@@ -3,6 +3,7 @@ import { detectRuntime } from './runtime_adapter.mjs';
 import { createProbeRuntime } from './render_probe.mjs';
 import { probeCapabilities } from './capabilities.mjs';
 import { createClientHost } from './client_host.mjs';
+import { browserLabLogin, localBridgeUrl } from './azerothcore_browser_auth.mjs';
 
 const $ = id => document.getElementById(id);
 const eventOut = $('input-event');
@@ -13,6 +14,41 @@ let clientInstalled = false;
 let clientBusy = false;
 const stage = $('control-stage');
 const cameraToggle = $('camera-toggle');
+let authGatewayReady = false;
+let authBusy = false;
+let localPage = false;
+try { localBridgeUrl(window.location); localPage = true; } catch { /* Remote pages cannot use the auth lab. */ }
+$('auth-lab-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!localPage || !authGatewayReady || authBusy) return;
+  authBusy = true;
+  $('lab-login').disabled = true;
+  const username = $('lab-username').value.trim();
+  let password = $('lab-password').value;
+  $('lab-password').value = ''; // Never retain in a form, preference or log.
+  $('lab-realms').replaceChildren();
+  $('lab-login-status').textContent = 'Connecting to local authserver…';
+  try {
+    const result = await browserLabLogin({username, password, onStage: phase => {
+      const messages = {connected: 'Local bridge connected', challenge: 'SRP6 challenge received',
+        'srp6-verified': 'Server M2 proof verified', realms: 'Realm list received'};
+      $('lab-login-status').textContent = messages[phase] || 'Authentication in progress';
+    }});
+    $('lab-login-status').textContent = `SRP6 verified · ${result.realms.length} realm(s) · gameplay NOT verified`;
+    for (const realm of result.realms) {
+      const item = document.createElement('li');
+      item.textContent = `${realm.name} · ${realm.locked ? 'Locked' : 'Listed'} · ${realm.characters} character(s) · ${realm.build || 'build unknown'}`;
+      $('lab-realms').appendChild(item);
+    }
+  } catch (error) {
+    // Error messages come from our fixed protocol/client code, not the server.
+    $('lab-login-status').textContent = `Lab auth failed: ${error.message}`;
+  } finally {
+    password = '';
+    authBusy = false;
+    $('lab-login').disabled = !(authGatewayReady && localPage);
+  }
+});
 function setCameraCapture(enabled) {
   stage.classList.toggle('camera-capture', enabled);
   cameraToggle.setAttribute('aria-pressed', String(enabled));
@@ -201,6 +237,12 @@ async function refreshStatus() {
     $('service-status').textContent = health.gateway === 'running' ? 'Running' : 'Unavailable';
     $('service-status').className = health.gateway === 'running' ? 'good' : 'bad';
     $('gateway-indicator').textContent = health.transport_enabled ? 'Local enabled' : 'Disabled by default';
+    authGatewayReady = health.transport_enabled === true;
+    $('lab-login').disabled = !localPage || !authGatewayReady || authBusy;
+    if (!authBusy) $('lab-login-status').textContent = !localPage
+      ? 'Local-only: open this project on localhost to use SRP6 tests.'
+      : authGatewayReady ? 'Ready for a disposable test account on your local authserver.'
+      : 'Gateway disabled. Set WOTLK_ENABLE_GATEWAY=true only in a private local lab.';
     for (const [elementId, status] of [['auth-status',realm.auth_tcp], ['world-status',realm.world_tcp]]) {
       const element = $(elementId);
       element.textContent = status === 'reachable' ? 'TCP reachable' : 'Not reachable';
@@ -212,6 +254,8 @@ async function refreshStatus() {
     $('auth-status').textContent = 'Unknown';
     $('world-status').textContent = 'Unknown';
     $('gateway-indicator').textContent = 'Unavailable';
+    authGatewayReady = false;
+    $('lab-login').disabled = true;
     $('launch-client').disabled = true;
   } finally { button.disabled = false; }
 }

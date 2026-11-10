@@ -94,3 +94,28 @@ Acceptance checklist:
 - [ ] iOS Safari / Android Chrome hardware verification
 
 Do not expose this experimental credential-handling code over a public website.
+
+## Build 10 — browser-native SRP6 test over the local gateway
+
+Unlike the Python-only Build 09 lab, Build 10 implements SRP6 M1/M2 in the
+browser (`web/azerothcore_browser_auth.mjs`) with built-in WebCrypto SHA-1 and
+BigInt. The browser forwards binary auth packets to the **existing loopback-only
+WebSocket-to-TCP bridge** (`/ws/auth`) after a user explicitly enables it.
+The reader reconstructs arbitrary fragmented TCP messages independently of
+WebSocket frame boundaries and rejects oversized or malformed server packets.
+
+Acceptance completed **offline**:
+
+- Python and JavaScript deterministic SRP6 vectors match byte-for-byte.
+- Synthetic authserver validates the M1 proof and returns an M2 and realm list.
+- The browser rejects forged M2; no subsequent realm request is sent.
+- A locally opened HTTP(S) page is required; remote hostnames are rejected.
+- Username/password are not saved by this application. Browser password
+  managers and OS features are outside the application's control.
+
+Actual AzerothCore / WotLK server acceptance is still **not performed**.
+This unreviewed classic SHA-1 SRP6 implementation, with no modern server TLS
+identity protection, must not handle important credentials or be exposed to the
+public internet. The browser auth stage is independent of the incomplete Wowser
+WebGL UI renderer: it does not connect to worldserver, list characters, or
+enter the WoW game world. It cannot substitute for a complete 3.3.5a client.
