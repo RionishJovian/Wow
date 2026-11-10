@@ -42,6 +42,23 @@ def checkout_source(target: Path, *, runner=subprocess.run) -> None:
     verify_checkout(target)
 
 
+# These three files are MIT-licensed upstream's own sample interface,
+# NOT Blizzard game resources. Vite production builds deliberately exclude
+# publicDir, so copy the precise upstream-authored files explicitly.
+UPSTREAM_UI = ('Wowser.toc', 'WowserFrame.xml', 'WowserParent.xml')
+
+
+def copy_upstream_ui(work: Path, dist: Path) -> None:
+    upstream = work / 'public' / 'Wowser'
+    destination = dist / 'Wowser'
+    destination.mkdir(parents=True, exist_ok=True)
+    for name in UPSTREAM_UI:
+        file = upstream / name
+        if not file.is_file() or file.is_symlink() or file.stat().st_size > 64 * 1024:
+            raise WowserPreparationError('Expected small upstream-owned Wowser UI file: ' + name)
+        shutil.copyfile(file, destination / name)
+
+
 def build(*, source: Path | None = None, destination: Path = DEFAULT_DEST,
           force: bool = False, runner=subprocess.run) -> dict:
     """Build from a pinned local checkout or fetch one into a temporary worktree.
@@ -71,6 +88,8 @@ def build(*, source: Path | None = None, destination: Path = DEFAULT_DEST,
         dist = work / "dist"
         if not (dist / "index.html").is_file():
             raise WowserPreparationError("Upstream build did not produce dist/index.html")
+        # Supply only the original open-source sample UI, no proprietary files.
+        copy_upstream_ui(work, dist)
         # Preserve the MIT license whenever an upstream build is packaged.
         shutil.copyfile(work / "LICENSE", dist / "WOWSER_LICENSE.txt")
         report = install(dist, destination, force=force)
@@ -79,7 +98,8 @@ def build(*, source: Path | None = None, destination: Path = DEFAULT_DEST,
         report["gameplay_verified"] = False
         report["assets_bundled"] = False
         (destination.resolve() / "lab-install.json").write_text(json.dumps(report, indent=2) + "\n")
-        # Reject corruption and unrecorded files before treating the UI as installed.
+        # Verify what was ACTUALLY installed, not just the source bundle.
+        # A failed integrity check never means the client is safe to mount.
         verify_installation(destination)
         return report
 

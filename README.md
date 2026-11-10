@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 05
+# WotLK Mobile Browser Lab — Build 04
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -71,25 +71,37 @@ A separate GitHub Actions job builds the pinned upstream UI *without assets*
 and publishes a temporary developer artifact. CI success confirms compilation
 and installation only; it does not test a game realm or mobile browsers.
 
-## Build 05: verified Wowser compilation and startup diagnostics
+## Build 05: verified compiled-client artifact and browser smoke gate
 
-The pinned Wowser client source compiles to a standalone, **asset-free UI bundle**.
-Build 05 verifies the installed client package before its use in the development
-host. It checks the pin, file checksums, embedded bridge, local-only resource
-references, upstream license and rejects unexpected files or symlinks.
+The upstream Wowser UI successfully compiled in [Build 04 GitHub Actions run
+#42699700643](https://github.com/RionishJovian/Wow/actions/runs/42699700643).
+Its no-game-assets ZIP contains a compiled `.js` bundle, HTML, bridge and MIT
+license. The artifact was downloaded for offline inspection; checksums and the
+original bridge matched the recorded manifest.
+
+Build 05 adds `scripts/verify_client_install.py` to check every installed file
+against the pinned upstream source manifest, reject extra/unexpected files,
+and validate script references and the injected input bridge:
 
 ```bash
+python scripts/build_wowser_client.py
 python -m scripts.verify_client_install --path .local-wowser-client
 ```
 
-The GitHub Actions integration pipeline also loads the **real compiled
-JavaScript** in a headless Chromium page, requires WebGL2, and waits for
-an instrumented UI startup stage. **A missing-resource stage is expected and
-acceptable without Blizzard assets**. This test does not validate world
-rendering, login, character movement, game-server connectivity, or
-mobile Safari/Android Chrome compatibility. The sandbox's browser
-cannot access localhost due to administrative restrictions; rely on the
-independent CI run for this smoke result.
+On GitHub Actions, the same pinned UI build is also exercised with a headless
+Chromium startup smoke test (`scripts/smoke_wowser_browser.py`). It requires
+WebGL2, loading the real compiled JavaScript, and reaching an instrumented UI
+stage. **A missing-resource stage is an acceptable result of the no-assets build,
+not proof of actual WotLK graphics or gameplay.** GitHub CI must independently
+report the browser smoke result; local sandbox browser requests were blocked by
+administrator network policy, so no real-device/browser pass is claimed here.
+
+### Remaining critical functionality
+
+- Render legally provided WotLK world terrain and character models in mobile browsers.
+- Implement real 3.3.5a login/session protocol via a reviewed client engine.
+- Connect actual client input APIs to avatar movement, not synthetic DOM keys.
+- Validate Android Chrome and iOS Safari on physical devices.
 
 ## Build 03: mount a separately built browser client
 
@@ -125,9 +137,47 @@ In a local lab only, it bridges `/ws/auth` to `127.0.0.1:3724` and `/ws/world` t
 2. **Build 02:** original procedural WebGL2 renderer, input movement/camera, browser capability checks.
 3. **Build 03:** optional external browser-client install, iframe lifecycle, nonce-bound input bridge and local-only client hosting.
 4. **Build 04 (this commit):** pinned upstream UI build and safe stage reporting; actual gameplay still unverified.
-5. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
-6. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
+5. **Build 05:** artifact integrity verifier and compiled upstream browser smoke test in CI.
+6. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
+7. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.
 
 ## Intellectual property and safety
 
 No copyrighted Blizzard client files, game assets, client patches, game data, account credentials, or reverse-engineered Lasthavens code are distributed here. Publishing an original WoW game client or assets, or operating a public community realm, requires careful rights/license assessment. Do not deploy the development gateway to the public internet.
+
+## Build 06: start loading real extracted 3.3.5a interface resources locally
+
+Build 06 resolves the **first missing UI-resource layer** of the pinned Wowser
+build. The build script now packages only three MIT-licensed, upstream-authored
+sample files (`Wowser.toc`, `WowserFrame.xml`, `WowserParent.xml`). It still
+**does not ship any Blizzard game files**. Wowser's sample UI loads Blizzard
+`Interface/GlueXML` files and PNG-converted texture references, so the compiled
+UI cannot fully initialize without local resources.
+
+If you have the right to use a WoW 3.3.5a (build 12340) installation, use your
+**own local tools** to extract the interface resources to a private folder.
+For example, arrange pre-extracted files at `./private-extracted/Interface/GlueXML/GlueFonts.xml`
+and `GlueFontStyles.xml`. Any `.blp` images required by this upstream client
+must be converted locally to `.png`; this repository does **not** contain an
+MPQ/BLP extractor or game data.
+
+```sh
+python scripts/build_wowser_client.py                 # pinned upstream code only
+python -m scripts.install_local_ui_assets ./private-extracted
+python -m scripts.verify_client_install --path .local-wowser-client
+WOTLK_ENABLE_CLIENT=true python -m uvicorn server.app:app --host 127.0.0.1 --port 8765
+```
+
+The local installer rejects symlinks, executables, MPQ/BLP/DBC archives,
+unsupported extensions, source overlap, oversized content, and untracked
+changes. Only `Interface/` UI resources are supported, including XML, Lua,
+fonts and converted images. The installed data is checksum-tracked but stays in
+`.local-wowser-client/`, which is **gitignored and loopback-only**. It is never
+copied into GitHub Actions artifacts or committed to this repository.
+Use `--force` to replace an existing local UI overlay after validating it.
+
+This advances the actual upstream UI resource path; it **does not implement
+WotLK SRP6 authentication, realm/character selection, in-world rendering,
+packet protocol, or actual game movement**. Those require a substantially more
+complete game client (or a researched port of the native 3.3.5a client engine)
+and a legally operated isolated test realm.

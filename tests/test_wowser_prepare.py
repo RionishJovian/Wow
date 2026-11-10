@@ -27,6 +27,10 @@ def create_fake_upstream(tmp_path: Path) -> Path:
     (upstream / "src" / "index.ts").write_text(UPSTREAM_ENTRY)
     (upstream / "package.json").write_text('{"name":"wowser-test"}')
     (upstream / "LICENSE").write_text('MIT LICENSE TEST')
+    sample = upstream / "public" / "Wowser"
+    sample.mkdir(parents=True)
+    for name in build_module.UPSTREAM_UI:
+        (sample / name).write_text('<Ui />')
     return upstream
 
 

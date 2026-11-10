@@ -1,4 +1,4 @@
-# Build 04 — pinned upstream browser UI integration
+# Build 05 — verified compiled browser UI integration
 
 **Status:** Implemented local client mounting, isolated iframe, optional bridge,
 normalized input delivery and offline installer. **Not actual WoW gameplay**.
@@ -111,6 +111,47 @@ The installed client is excluded from version control.
 Publicly hosting Blizzard game assets or an unauthorized public realm poses
 separate intellectual-property and licensing issues.
 
-## Build 05 acceptance gate
+## Build 05 verification and browser smoke
 
-The pinned Wowser UI bundle is checked with `python -m scripts.verify_client_install` against SHA-256 checksums recorded before local bridge insertion. CI then starts the local client host and runs `python -m scripts.smoke_wowser_browser` in headless Chromium with WebGL2 enabled. A missing-resource startup stage is expected without game assets. Neither check certifies WotLK 3.3.5a login, world rendering, multiplayer connectivity, or mobile-browser support. The scripts do not retrieve or publish Blizzard content.
+The initial no-assets Wowser UI compilation succeeded in [GitHub Actions
+run 42699700643](https://github.com/RionishJovian/Wow/actions/runs/42699700643).
+Build 05 checks the **downloaded compiled artifact** (not merely the source)
+using `python -m scripts.verify_client_install --path <installed-directory>`.
+This verifies the exact pinned upstream commit, source-file SHA256 values,
+bridge injection, no unrecorded files, and resolvable local script assets.
+It does not establish legal rights to game data or a successful login.
+
+The upstream CI job now runs a Playwright/Chromium smoke test after building.
+The test requires a WebGL2 context and stage telemetry from the real compiled
+script. Since original game resources are intentionally absent, failure to load
+`Wowser.toc` is an **expected UI resource error**, not an engine/gameplay pass.
+A production-usable client still requires a much more complete implementation.
+
+## Build 06: local resources for actual 3.3.5a UI loading
+
+The pinned modern Wowser client has a *real* `UIContext.load()` entrypoint but
+its Vite production build disables `publicDir`. This left its own sample
+`Wowser/Wowser.toc` missing. Build 06 copies just three original MIT Wowser
+sample files into the build; their `.toc` then references Blizzard-owned
+`Interface/GlueXML` files, which are **not provided** in source or CI.
+
+To test against legitimately sourced, locally pre-extracted game interface data:
+
+```sh
+python scripts/build_wowser_client.py --force
+python -m scripts.install_local_ui_assets /absolute/path/to/private-extraction
+python -m scripts.verify_client_install --path .local-wowser-client
+```
+
+The extraction root must have `Interface/GlueXML/GlueFonts.xml` and
+`Interface/GlueXML/GlueFontStyles.xml`. Also provide other referenced UI XML,
+Lua, fonts and already-PNG-converted images as needed. Paths are retained
+under `/client/Interface/` on loopback only; the browser normalizes the
+upstream's `Wowser\\..\\Interface` path separators to the mounted route.
+Do not use a public host, and do not put original Blizzard game files in Git.
+
+**Acceptance gate (not passed):** The actual compiled Wowser client must load
+UI files and display the correct interface with no missing resources, then a
+separate engine must provide real game-world assets and 3.3.5a packet handling.
+The new pipeline is a verifiable dependency toward that goal, not evidence of
+full playable WoW. Modern Wowser is still only an incomplete UI/graphics client.

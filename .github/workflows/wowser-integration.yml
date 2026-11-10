@@ -5,12 +5,15 @@ on:
     paths:
       - '.github/workflows/wowser-integration.yml'
       - 'scripts/build_wowser_client.py'
+      - 'scripts/install_local_ui_assets.py'
       - 'scripts/prepare_wowser.py'
       - 'scripts/install_wowser.py'
       - 'web/client_bridge.mjs'
       - 'scripts/verify_client_install.py'
       - 'scripts/smoke_wowser_browser.py'
       - 'tests/test_client_verify.py'
+      - 'tests/test_local_ui_assets.py'
+      - 'tests/test_build_wowser.py'
       - 'tests/test_browser_smoke.py'
   workflow_dispatch:
 permissions:
@@ -43,19 +46,21 @@ jobs:
           assert data['source_commit'] == UPSTREAM_COMMIT
           assert data['gameplay_verified'] is False
           assert data['assets_bundled'] is False
-          for path in ('index.html', 'lab-bridge.mjs', 'WOWSER_LICENSE.txt'):
+          for path in ('index.html', 'lab-bridge.mjs', 'WOWSER_LICENSE.txt',
+                       'Wowser/Wowser.toc', 'Wowser/WowserFrame.xml',
+                       'Wowser/WowserParent.xml'):
               assert (root / path).is_file(), path
-          print('Browser UI build packaged, no gameplay claims.')
+          print('Upstream-authored sample UI packaged; no Blizzard game files.')
           PY
-      - name: Verify package hashes, license and embedded bridge
+      - name: Verify installed artifact hashes and bundled bridge
         env:
           ARTIFACT_PATH: ${{ runner.temp }}/wowser-ui
         run: python -m scripts.verify_client_install --path "$ARTIFACT_PATH"
-      - name: Install headless Chromium for an asset-free UI smoke check
+      - name: Install headless browser testing prerequisites
         run: |
           python -m pip install -r requirements.txt playwright
           python -m playwright install --with-deps chromium
-      - name: Execute compiled UI startup smoke (not WoW gameplay)
+      - name: Smoke test compiled Wowser UI startup (not gameplay)
         env:
           WOTLK_ENABLE_CLIENT: 'true'
           WOTLK_CLIENT_DIR: ${{ runner.temp }}/wowser-ui
@@ -67,7 +72,7 @@ jobs:
           python - <<'PYBLOCK'
           import time, urllib.request
           url = 'http://127.0.0.1:8765/client/index.html'
-          for _ in range(40):
+          for attempt in range(40):
               try:
                   with urllib.request.urlopen(url, timeout=2) as response:
                       if response.status == 200:
@@ -75,7 +80,7 @@ jobs:
               except OSError:
                   time.sleep(.25)
           else:
-              raise SystemExit('Local client test server did not start')
+              raise SystemExit('Client test server never became ready')
           PYBLOCK
           python -m scripts.smoke_wowser_browser
       - name: Upload optional local-development UI bundle

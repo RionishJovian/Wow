@@ -13,10 +13,15 @@ client-assets/
 *.dll
 *.exe
 
-# Local-only third-party client builds and game data: never push to GitHub.
+# Never commit locally installed client builds or proprietary game interface data.
 .local-wowser-client/
-.external-client/
-*.mpq
-*.MPQ
+.wotlk-ui-stage-*/
+.wotlk-ui-backup-*/
+*.blp
+*.BLP
 *.dbc
 *.DBC
+*.adt
+*.ADT
+*.m2
+*.M2
