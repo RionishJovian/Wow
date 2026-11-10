@@ -1,8 +1,8 @@
-# WotLK Mobile Browser Lab — Build 20
+# WotLK Mobile Browser Lab — Build 21
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
-A standalone, mobile-first browser shell to evaluate a future **legally sourced** WotLK 3.3.5a-compatible runtime. It contains a touch joystick, action buttons, camera drag input, browser WebAssembly/WebGL2 capability diagnostics, an **opt-in, original WebGL2 graphics test**, and a **disabled-by-default**, byte-transparent WebSocket-to-TCP development bridge. There is **no** WoW authentication, character selection, original WoW world rendering, game-server implementation, or game content included. The rendering test is a procedural, asset-free environment: **not the WoW world**.
+A standalone, mobile-first browser shell to evaluate a future **legally sourced** WotLK 3.3.5a-compatible runtime. It contains a touch joystick, action buttons, camera drag input, browser WebAssembly/WebGL2 capability diagnostics, an **opt-in, original WebGL2 graphics test**, and a **disabled-by-default**, byte-transparent WebSocket-to-TCP development bridge. There is **no production-ready** WoW authentication, playable character selection, original WoW world rendering, game-server implementation, or game content included; isolated protocol experiments are separate. The rendering test is a procedural, asset-free environment: **not the WoW world**.
 
 This repository is intentionally separate from MikroMagic/Mega-Magic and from any existing production hosting.
 
@@ -397,3 +397,19 @@ python -m pytest tests/test_world_acceptance.py -q
 instance with privately supplied world data is available and the one-shot CLI
 passes against it. No server/client assets, real account credentials or game data
 are included. See [Build 20 manual acceptance gate](docs/AZEROTHCORE_WORLD_ACCEPTANCE.md).
+
+## Build 21 — optional, isolated real AzerothCore worldserver lab
+
+An opt-in Compose overlay adds the official AzerothCore worldserver to the existing
+private authserver/database lab. The world data is **not** downloaded or committed:
+it must be independently authorized, stored outside this Git repository and
+mounted read-only from a private absolute path. Local ports `3724` and `8085`
+remain bound to `127.0.0.1` and the Docker project is isolated from the earlier
+Build 11 auth-only lab. `scripts.azerothcore_world_data_preflight` checks only
+the layout, and `scripts.azerothcore_real_world_lab` can generate and clean up a
+disposable account while testing real auth+world character enumeration.
+
+**Real AzerothCore worldserver acceptance is pending**, because no authorized
+world-data directory is connected to this development environment. Unit tests
+and the separate Compose configuration workflow are not live-server evidence.
+See [Build 21 Docker worldserver instructions](docs/AZEROTHCORE_WORLD_DOCKER.md).

@@ -1,0 +1,59 @@
+name: Worldserver opt-in Compose configuration (no assets)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lab/azerothcore-world.compose.yml'
+      - 'lab/azerothcore-auth.compose.yml'
+      - '.github/workflows/azerothcore-world-config.yml'
+      - 'scripts/azerothcore_world_data_preflight.py'
+      - 'scripts/azerothcore_real_world_lab.py'
+      - 'tests/test_build21_world_lab.py'
+  pull_request:
+    paths:
+      - 'lab/azerothcore-world.compose.yml'
+      - 'lab/azerothcore-auth.compose.yml'
+      - '.github/workflows/azerothcore-world-config.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-world-compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # CI never starts the server and never pulls client-derived data.
+      WOTLK_LAB_DB_PASSWORD: ci-config-only-not-a-live-password
+      WOTLK_LAB_DATA_DIR: /tmp/build21-empty-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render Docker Compose with synthetic path (DO NOT START)
+        run: |
+          mkdir -p "$WOTLK_LAB_DATA_DIR"
+          docker compose --project-name wotlk-world-lab-21 \
+            -f lab/azerothcore-auth.compose.yml \
+            -f lab/azerothcore-world.compose.yml \
+            config --format json > "$RUNNER_TEMP/build21-compose.json"
+      - name: Assert worldserver never exposes data or TCP publicly
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          config = json.loads((Path(os.environ['RUNNER_TEMP'])/'build21-compose.json').read_text())
+          services = config['services']
+          assert set(services) == {'ac-database','ac-db-import','ac-authserver','ac-worldserver'}
+          world = services['ac-worldserver']
+          assert world['image'].startswith('acore/ac-wotlk-worldserver:')
+          assert not world.get('privileged', False)
+          assert len(world['ports']) == 1
+          assert world['ports'][0]['host_ip'] == '127.0.0.1'
+          assert world['ports'][0]['target'] == 8085
+          assert len(world['volumes']) == 1
+          volume = world['volumes'][0]
+          assert volume['type'] == 'bind' and volume['read_only'] is True
+          assert volume['source'] == os.environ['WOTLK_LAB_DATA_DIR']
+          assert volume['target'] == '/azerothcore/env/dist/data'
+          assert all(p['host_ip'] == '127.0.0.1' for s in services.values()
+                     for p in s.get('ports', []))
+          print('PASS: isolated localhost-only Docker configuration; no images started or assets fetched')
+          PY

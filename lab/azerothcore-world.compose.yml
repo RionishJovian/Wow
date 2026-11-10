@@ -1,0 +1,29 @@
+# Build 21: opt-in worldserver ADD-ON to the existing auth-only lab.
+# Requires a privately supplied, authorized data directory. No data download.
+# Use with -f lab/azerothcore-auth.compose.yml -f lab/azerothcore-world.compose.yml.
+services:
+  ac-worldserver:
+    image: acore/ac-wotlk-worldserver:${WOTLK_LAB_WORLD_IMAGE_TAG:-master}
+    # No privileged mode, no host networking, and no public port exposure.
+    user: acore
+    ports:
+      - "127.0.0.1:${WOTLK_LAB_WORLD_PORT:-8085}:8085"
+    volumes:
+      - type: bind
+        source: ${WOTLK_LAB_DATA_DIR:?Set the absolute path of locally authorized, extracted server data}
+        target: /azerothcore/env/dist/data
+        read_only: true
+    environment:
+      AC_DATA_DIR: /azerothcore/env/dist/data
+      AC_LOGS_DIR: /azerothcore/env/dist/logs
+      AC_LOGIN_DATABASE_INFO: "ac-database;3306;root;${WOTLK_LAB_DB_PASSWORD:?Set a disposable database password};acore_auth"
+      AC_WORLD_DATABASE_INFO: "ac-database;3306;root;${WOTLK_LAB_DB_PASSWORD};acore_world"
+      AC_CHARACTER_DATABASE_INFO: "ac-database;3306;root;${WOTLK_LAB_DB_PASSWORD};acore_characters"
+      AC_CLOSE_IDLE_CONNECTIONS: "0"
+    depends_on:
+      ac-database:
+        condition: service_healthy
+      ac-db-import:
+        condition: service_completed_successfully
+    restart: "no"
+    networks: [lab-network]
