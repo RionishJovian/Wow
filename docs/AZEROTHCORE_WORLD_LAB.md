@@ -47,3 +47,19 @@ Upstream implementation references:
 - [AzerothCore WorldSocket.cpp](https://github.com/azerothcore/azerothcore-wotlk/blob/master/src/server/game/Server/WorldSocket.cpp)
 - [AzerothCore AuthCrypt.cpp](https://github.com/azerothcore/azerothcore-wotlk/blob/master/src/common/Cryptography/Authentication/AuthCrypt.cpp)
 - [AzerothCore Player::BuildEnumData](https://github.com/azerothcore/azerothcore-wotlk/blob/master/src/server/game/Entities/Player/Player.cpp)
+
+## Build 13 — browser read-only roster
+
+The web UI exposes a separate opt-in step to run `web/azerothcore_browser_world.mjs`
+after browser SRP6 proof and realm list verification. Only locally configured
+`/ws/world` is allowed; the realm-list host is ignored. The browser performs
+3.3.5a challenge/digest and encrypted header framing, requests character
+enumeration, then immediately closes the local world socket. Character names
+and basic appearance metadata are shown as read-only text. **Never** store
+client SRP session keys or mark a synthetic roster as a live realm.
+
+Validation of the JavaScript implementation currently uses an independent
+Node fake-worldserver and synthetic characters. This is not real AzerothCore
+worldserver acceptance. Original game assets, a real server with authorized
+world data, character login, in-world movement and mobile-device tests remain
+unavailable.

@@ -4,6 +4,8 @@ import { createProbeRuntime } from './render_probe.mjs';
 import { probeCapabilities } from './capabilities.mjs';
 import { createClientHost } from './client_host.mjs';
 import { browserLabLogin, localBridgeUrl } from './azerothcore_browser_auth.mjs';
+import { enumerateBrowserCharacters } from './azerothcore_browser_world.mjs';
+import {renderCharacterRoster, SAMPLE_CHARACTERS} from './character_roster.mjs';
 
 const $ = id => document.getElementById(id);
 const eventOut = $('input-event');
@@ -27,27 +29,54 @@ $('auth-lab-form').addEventListener('submit', async event => {
   let password = $('lab-password').value;
   $('lab-password').value = ''; // Never retain in a form, preference or log.
   $('lab-realms').replaceChildren();
+  $('lab-characters').replaceChildren();
+  $('lab-roster-status').textContent = 'No character list verified';
   $('lab-login-status').textContent = 'Connecting to local authserver…';
   try {
+    const readCharacters = $('lab-read-characters').checked;
+    const realmId = Number($('lab-realm-id').value);
     const result = await browserLabLogin({username, password, onStage: phase => {
       const messages = {connected: 'Local bridge connected', challenge: 'SRP6 challenge received',
         'srp6-verified': 'Server M2 proof verified', realms: 'Realm list received'};
       $('lab-login-status').textContent = messages[phase] || 'Authentication in progress';
-    }});
+    }, onVerifiedSession: readCharacters ? async ({username: verifiedName, sessionKey, realms}) => {
+      const matching = realms.filter(r => r.id === realmId);
+      if (matching.length !== 1 || matching[0].locked || (matching[0].flags & 2) ||
+          (matching[0].build !== null && matching[0].build !== 12340)) {
+        throw new Error('Selected realm must be uniquely listed, unlocked, online and compatible');
+      }
+      return enumerateBrowserCharacters({username: verifiedName,sessionKey,realmId,
+        onStage: phase => {
+          const messages = {'world-connected':'Local world bridge connected',
+            'world-authenticated':'World session authenticated; requesting characters',
+            characters:'Read-only character response received'};
+          $('lab-roster-status').textContent = messages[phase] || 'Reading local character list';
+        }});
+    } : null});
     $('lab-login-status').textContent = `SRP6 verified · ${result.realms.length} realm(s) · gameplay NOT verified`;
     for (const realm of result.realms) {
       const item = document.createElement('li');
       item.textContent = `${realm.name} · ${realm.locked ? 'Locked' : 'Listed'} · ${realm.characters} character(s) · ${realm.build || 'build unknown'}`;
       $('lab-realms').appendChild(item);
     }
+    if (result.world?.character_list_received) {
+      renderCharacterRoster({container:$('lab-characters'),characters:result.world.characters,
+        source:'verified-local-protocol'});
+      $('lab-roster-status').textContent = `Verified local protocol · ${result.world.character_count} character(s) · read-only; no gameplay`;
+    }
   } catch (error) {
     // Error messages come from our fixed protocol/client code, not the server.
-    $('lab-login-status').textContent = `Lab auth failed: ${error.message}`;
+    $('lab-login-status').textContent = `Local protocol check failed: ${error.message}`;
+    $('lab-roster-status').textContent = 'Character list not verified';
   } finally {
     password = '';
     authBusy = false;
     $('lab-login').disabled = !(authGatewayReady && localPage);
   }
+});
+$('lab-demo-roster').addEventListener('click', () => {
+  renderCharacterRoster({container:$('lab-characters'),characters:SAMPLE_CHARACTERS,source:'demo'});
+  $('lab-roster-status').textContent = 'Synthetic sample characters only — no server connection';
 });
 function setCameraCapture(enabled) {
   stage.classList.toggle('camera-capture', enabled);

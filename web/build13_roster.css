@@ -1,0 +1,9 @@
+/* Build 13 character roster; scoped to the local read-only protocol lab. */
+.lab-roster-head {display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:22px;}
+.lab-roster-head h3 {font-size:18px;font-weight:650;margin:0;}
+.lab-characters {display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;list-style:none;padding:0;margin:16px 0;}
+.lab-character {display:flex;flex-direction:column;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:19px;}
+.lab-character strong {color:var(--text);font-size:16px;}
+.lab-character span {color:var(--subtle);font-size:13px;}
+.lab-character small {color:var(--aqua);font-size:10px;font-weight:750;letter-spacing:.08em;}
+#lab-realm-id {max-width:96px;}

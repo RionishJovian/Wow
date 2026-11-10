@@ -167,3 +167,30 @@ test('frame reader accepts partial chunks and errors on oversized or text frames
   socket.emit('message', {data: 'not-binary'});
   await assert.rejects(next, /Unexpected or oversized/);
 });
+
+test('verified SRP6 key is ephemeral and provided only after M2 and realm verification', async () => {
+  const socket = new FakeSocket();
+  let observedKey;
+  const out = await browserLabLogin({username:USER,password:PASSWORD,
+    locationRef:{hostname:'localhost',host:'localhost:8765',protocol:'http:'},
+    socketFactory:()=>socket,cryptoRef:clientCrypto,
+    onVerifiedSession:async({username,sessionKey,realms})=>{
+      assert.equal(username,USER);
+      assert.equal(sessionKey.length,40);
+      assert.equal(realms[0].id,1);
+      assert.notDeepEqual(sessionKey,new Uint8Array(40));
+      observedKey=sessionKey;
+      return {world_authenticated:true,character_list_received:true,characters:[],character_count:0};
+    }});
+  assert.equal(out.world.character_count,0);
+  assert.equal(out.world_connected,true);
+  assert.equal(out.gameplay_verified,false);
+  assert.equal(Object.hasOwn(out,'sessionKey'),false);
+  assert.deepEqual(observedKey,new Uint8Array(40),'ephemeral session key cleared at transaction end');
+  let called=false;
+  await assert.rejects(browserLabLogin({username:USER,password:PASSWORD,
+    locationRef:{hostname:'localhost',host:'localhost:8765',protocol:'http:'},
+    socketFactory:()=>new FakeSocket({badProof:true}),cryptoRef:clientCrypto,
+    onVerifiedSession:async()=>{called=true;}}),/server proof rejected/);
+  assert.equal(called,false);
+});

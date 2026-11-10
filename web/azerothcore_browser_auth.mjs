@@ -140,7 +140,9 @@ export async function calculateClientProof(username, password, challenge, {
   const M1 = await sha1(cryptoRef.subtle, xor, IHash, challenge.salt, A, challenge.B, K);
   const M2 = await sha1(cryptoRef.subtle, A, M1, K);
   // CRC/version proof is zero for the limited non-strict local test realm.
-  return {packet: concatBytes(Uint8Array.of(1), A, M1, new Uint8Array(22)), expectedM2: M2};
+  return {packet: concatBytes(Uint8Array.of(1), A, M1, new Uint8Array(22)), expectedM2: M2,
+    // Ephemeral verified SRP key. Only pass to an optional same-transaction callback, then zero.
+    sessionKey: K};
 }
 export function verifyServerProof(packet, expectedM2) {
   if (!(packet instanceof Uint8Array) || packet.length !== 32 || packet[0] !== 1 || packet[1] !== 0 ||
@@ -255,10 +257,13 @@ export function localBridgeUrl(locationRef) {
 /** No persistence or logging. Caller must discard password after this call. */
 export async function browserLabLogin({username, password, locationRef = globalThis.location,
   socketFactory = url => new WebSocket(url), cryptoRef = globalThis.crypto,
-  timeoutMs = 5000, onStage = () => {},
+  timeoutMs = 5000, onStage = () => {}, onVerifiedSession = null,
 }) {
   const bridge = localBridgeUrl(locationRef);
   checkLabCredentials(username, password);
+  if (onVerifiedSession !== null && typeof onVerifiedSession !== 'function') {
+    throw new Error('Invalid local session callback');
+  }
   if (!Number.isFinite(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000) {
     throw new Error('Invalid local auth timeout');
   }
@@ -283,22 +288,34 @@ export async function browserLabLogin({username, password, locationRef = globalT
     const challenge = parseChallenge(concatBytes(header, await reader.read(116)));
     onStage('challenge');
     const proof = await calculateClientProof(username, password, challenge, {cryptoRef});
-    socket.send(proof.packet);
-    const proofHeader = await reader.read(2);
-    if (!sameBytes(proofHeader, Uint8Array.of(1, 0))) throw new Error('SRP6 proof rejected');
-    verifyServerProof(concatBytes(proofHeader, await reader.read(30)), proof.expectedM2);
-    onStage('srp6-verified');
-    socket.send(Uint8Array.of(0x10, 0, 0, 0, 0));
-    const realmHeader = await reader.read(3);
-    if (realmHeader[0] !== 0x10) throw new Error('Invalid realm-list response');
-    const length = realmHeader[1] | (realmHeader[2] << 8);
-    if (length < 8 || length > REALM_LIMIT) throw new Error('Realm-list frame exceeds bounds');
-    const realms = parseRealmList(concatBytes(realmHeader, await reader.read(length)));
-    onStage('realms');
-    return {srp6_server_proof_verified: true, realm_list_decoded: true,
-      realms: realms.map(r => ({id: r.id, name: r.name, characters: r.characters,
-        locked: r.locked, build: r.build})),
-      world_connected: false, gameplay_verified: false, server_identity_verified: false};
+    // Do not release this key in any public result. It is only valid within this transaction.
+    try {
+      socket.send(proof.packet);
+      const proofHeader = await reader.read(2);
+      if (!sameBytes(proofHeader, Uint8Array.of(1, 0))) throw new Error('SRP6 proof rejected');
+      verifyServerProof(concatBytes(proofHeader, await reader.read(30)), proof.expectedM2);
+      onStage('srp6-verified');
+      socket.send(Uint8Array.of(0x10, 0, 0, 0, 0));
+      const realmHeader = await reader.read(3);
+      if (realmHeader[0] !== 0x10) throw new Error('Invalid realm-list response');
+      const length = realmHeader[1] | (realmHeader[2] << 8);
+      if (length < 8 || length > REALM_LIMIT) throw new Error('Realm-list frame exceeds bounds');
+      const realms = parseRealmList(concatBytes(realmHeader, await reader.read(length)));
+      onStage('realms');
+      // Only after both the server M2 proof and the realm framing are verified.
+      const world = onVerifiedSession ? await onVerifiedSession({
+        username: username.toUpperCase(), sessionKey: proof.sessionKey, realms,
+      }) : null;
+      return {srp6_server_proof_verified: true, realm_list_decoded: true,
+        realms: realms.map(r => ({id: r.id, name: r.name, characters: r.characters,
+          locked: r.locked, build: r.build})),
+        ...(world ? {world} : {}),
+        world_connected: Boolean(world?.world_authenticated), gameplay_verified: false,
+        server_identity_verified: false};
+    } finally {
+      // JS string passwords cannot reliably be erased; do not store/log them.
+      proof.sessionKey.fill(0);
+    }
   };
   try {
     return await Promise.race([exchange(), timeout]);

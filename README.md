@@ -307,3 +307,9 @@ python -m scripts.azerothcore_world_lab --account LABTEST --realm-id 1
 See [worldserver integration lab](docs/AZEROTHCORE_WORLD_LAB.md).
 **This is not playable WoW:** the browser client lacks an integrated world
 protocol, original character models/terrain, and in-game movement.
+
+## Build 13 — browser read-only character roster
+
+The experimental browser can optionally continue a verified, disposable local SRP6 session to the **loopback-only** `/ws/world` bridge. It implements the AzerothCore world challenge, session proof, legacy encrypted packet headers and `CMSG_CHAR_ENUM` / `SMSG_CHAR_ENUM` read-only character metadata. It never follows realm-list network addresses, saves passwords or session keys, exposes character GUIDs, enters the world or controls characters. A separately labeled synthetic character preview works without any server.
+
+On `localhost`, enable the private gateway only when you have your own local authserver/worldserver and a disposable `LAB` account. The **Also read characters** option requires selecting a realm ID explicitly; game data stays outside this repository. Run `node --test tests/*.test.mjs` for offline simulated worldserver and independent crypto checks. Actual live worldserver acceptance, 3D world rendering, in-world movement and mobile hardware testing are still pending. See [world-protocol lab](docs/AZEROTHCORE_WORLD_LAB.md).
