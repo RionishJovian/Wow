@@ -10,7 +10,12 @@ test('offline original world owns an adaptive GPU budget and advertises its draw
  assert.match(src,/quality\.resolution\(/);
  assert.match(src,/quality\.sampleFrame\(/);
  assert.match(src,/renderPixels:/);
- assert.match(src,/documentRef\.hidden/);
+ // Visibility handling is centralized, not duplicated inside the renderer.
+ assert.match(src,/createVisibleFrameLoop/);
+ const scheduler=load('web/visible_frame_loop.mjs');
+ assert.match(scheduler,/page\.hidden/);
+ assert.match(scheduler,/cancelRaf\(pending\)/);
+ assert.match(scheduler,/onHide\(\)/);
 });
 
 test('Chromium original world smoke enforces budget, not just shader startup',()=>{
