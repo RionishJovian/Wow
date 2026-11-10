@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 07
+# WotLK Mobile Browser Lab — Build 08
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -209,3 +209,19 @@ WotLK SRP6 authentication, realm/character selection, in-world rendering,
 packet protocol, or actual game movement**. Those require a substantially more
 complete game client (or a researched port of the native 3.3.5a client engine)
 and a legally operated isolated test realm.
+
+## Build 08: asset-free AzerothCore auth-protocol interoperability
+
+This milestone adds an initial **WotLK 3.3.5a build-12340 authentication
+challenge** check. Offline tests simulate a local authserver, and an optional
+CLI contacts only numeric loopback addresses using a random non-existent
+identifier. No original game files or real account credentials are needed.
+
+```sh
+python -m pytest tests/test_azerothcore_auth_probe.py -q
+# Only against your own local authserver:
+python -m scripts.azerothcore_auth_probe --host 127.0.0.1 --port 3724
+```
+
+See [Build 08 protocol lab](docs/AZEROTHCORE_LAB.md). A valid challenge reply
+does **not** mean login, a working realm, in-world rendering, or gameplay.
