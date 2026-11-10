@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 04
+# WotLK Mobile Browser Lab — Build 07
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -27,6 +27,34 @@ node --test tests/*.test.mjs   # optional Node.js 20+ JS tests
 ```
 
 The browser interface works without a game server. Build 03 adds an opt-in host for a separately built external WotLK browser client; see [client integration instructions](docs/CLIENT_INTEGRATION.md). The `/api/health` endpoint explicitly says `gameplay_ready: false`. `/api/realm-status` tests only TCP reachability, not authentic gameplay readiness.
+
+## Build 07: real-data preflight and safer local UI paths
+
+**No original 3.3.5a game files were available in this environment.** Build 07
+adds a *read-only* local installation checker and a patched pinned Wowser asset
+resolver, which translates upstream `Wowser\...` relative resource names into
+same-origin `/client/...` URLs and rejects traversal/foreign-origin requests.
+The resources are neither copied nor uploaded by the scanner.
+
+```bash
+# On a computer where YOU already have a legally obtained WotLK installation:
+python -m scripts.preflight_wotlk_install "/path/to/World of Warcraft"
+# Exit 0 = likely WotLK data structure and MPQ headers; NOT verified build 12340.
+
+# Optional local-only UI test, AFTER you independently extract permitted UI
+# resources to an Interface/ directory and install the pinned Wowser build:
+python scripts/install_local_ui_assets.py "/path/to/extracted" --dest .local-wowser-client
+WOTLK_ENABLE_CLIENT=true python -m uvicorn server.app:app --host 127.0.0.1 --port 8765
+# Separately, with Chromium available:
+python -m scripts.smoke_wowser_browser --require-ui-render
+```
+
+Only the real UI render method is checked by `--require-ui-render`; it does not
+prove correct game content, 3D world rendering, login, movement, or game-server
+compatibility. To certify build **3.3.5a (12340)**, additional trusted build
+identity evidence is required; MPQ magic alone is not version evidence.
+**Never put original game files or extracted Blizzard assets in GitHub, CI, or a
+publicly accessible server.** Use an isolated local test setup and assess rights.
 
 ## Build 02 graphics test
 
@@ -136,7 +164,7 @@ In a local lab only, it bridges `/ws/auth` to `127.0.0.1:3724` and `/ws/world` t
 1. **Build 01:** touch controls, status UI, isolated local diagnostic/gateway prototype.
 2. **Build 02:** original procedural WebGL2 renderer, input movement/camera, browser capability checks.
 3. **Build 03:** optional external browser-client install, iframe lifecycle, nonce-bound input bridge and local-only client hosting.
-4. **Build 04 (this commit):** pinned upstream UI build and safe stage reporting; actual gameplay still unverified.
+4. **Build 04:** pinned upstream UI build and safe stage reporting; actual gameplay still unverified.
 5. **Build 05:** artifact integrity verifier and compiled upstream browser smoke test in CI.
 6. **Feasibility gate:** verify a compatible, licensed runtime can render a real 3.3.5a scene, authenticate, and move a test character in Android Chrome and iOS Safari.
 7. **Community prototype:** security, accounts, moderation, staging, and controlled load tests. 500–1,000 concurrent players is a **goal, not measured capacity**.

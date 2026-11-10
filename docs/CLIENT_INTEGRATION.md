@@ -155,3 +155,27 @@ UI files and display the correct interface with no missing resources, then a
 separate engine must provide real game-world assets and 3.3.5a packet handling.
 The new pipeline is a verifiable dependency toward that goal, not evidence of
 full playable WoW. Modern Wowser is still only an incomplete UI/graphics client.
+
+
+## Build 07: local real-data preflight and strict UI acceptance
+
+Use `python -m scripts.preflight_wotlk_install "/path/to/World of Warcraft"`
+to inspect **only archive names and MPQ headers** from a user-owned local game
+installation. The checker does not open an executable, extract game resources,
+copy files, upload anything, or authenticate against a realm. It returns a
+candidate result, **never** "confirmed 3.3.5a build 12340".
+
+The pinned Wowser source overlay now normalizes backslash-based relative asset
+paths and confines requests to `/client/`. Run `node --test tests/*.test.mjs`
+to validate rejection of absolute, external, encoded, and traversal paths.
+
+After a developer has independently prepared authorized extracted `Interface/`
+resources on the **same local machine**, use `scripts/install_local_ui_assets.py`
+for the verified client overlay and `python -m scripts.smoke_wowser_browser
+--require-ui-render` for a stricter UI-only result. The previous default
+assetless probe still accepts an *expected* missing-resources stage, but the
+strict UI gate **never** counts missing-resource failures as a pass.
+
+The current Wowser implementation does not demonstrate a complete working
+3.3.5a login-to-world engine. Even a strict UI render pass would not prove
+original game-world rendering, authentication, or mobile hardware compatibility.

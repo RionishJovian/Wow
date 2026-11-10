@@ -25,6 +25,14 @@ def create_fake_upstream(tmp_path: Path) -> Path:
     upstream = tmp_path / "upstream"
     (upstream / "src").mkdir(parents=True)
     (upstream / "src" / "index.ts").write_text(UPSTREAM_ENTRY)
+    fetch = upstream / "src" / "utils"
+    fetch.mkdir(parents=True)
+    (fetch / "fetch.ts").write_text(
+        "type ResponseBodyType = 'text'\n"
+        "export default async (path: string) => {\n"
+        "  const response = await fetch(path);\n"
+        "  return response.text();\n}\n"
+    )
     (upstream / "package.json").write_text('{"name":"wowser-test"}')
     (upstream / "LICENSE").write_text('MIT LICENSE TEST')
     sample = upstream / "public" / "Wowser"
@@ -56,6 +64,9 @@ def test_prepare_verifies_pin_and_keeps_sources_pristine_on_error(monkeypatch, t
     prep.prepare(upstream)
     assert (upstream / "src/wotlk-lab-stage.ts").is_file()
     assert "setLabStage('client-created')" in (upstream / "src/index.ts").read_text()
+    assert (upstream / "src/wotlk-lab-resource.ts").exists()
+    assert "localClientResource(input: string): string" in (upstream / "src/wotlk-lab-resource.ts").read_text()
+    assert "localClientResource(path)" in (upstream / "src/utils/fetch.ts").read_text()
     with pytest.raises(prep.WowserPreparationError, match="pristine"):
         prep.prepare(upstream)
 
@@ -97,6 +108,8 @@ def test_offline_build_uses_pinned_source_and_preserves_original(monkeypatch, tm
     assert (destination / 'lab-install.json').exists()
     assert "setLabStage(" not in (upstream / 'src/index.ts').read_text()
     assert not (upstream / 'src/wotlk-lab-stage.ts').exists()
+    assert not (upstream / 'src/wotlk-lab-resource.ts').exists()
+    assert 'localClientResource(path)' not in (upstream / 'src/utils/fetch.ts').read_text()
     assert calls == [
         ['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund'],
         ['npm', 'run', 'build', '--', '--base=/client/'],

@@ -112,13 +112,36 @@ def prepare(source: Path, *, runner=subprocess.run) -> None:
     verify_checkout(source, runner=runner)
     entry = source / "src" / "index.ts"
     output = source / "src" / "wotlk-lab-stage.ts"
-    if not entry.is_file() or output.exists():
-        raise WowserPreparationError("Expected pristine upstream src/index.ts; stage overlay already exists")
+    fetch = source / "src" / "utils" / "fetch.ts"
+    resource_adapter = source / "src" / "wotlk-lab-resource.ts"
+    adapter_source = Path(__file__).resolve().parents[1] / "web" / "local_client_resource.mjs"
+    if not entry.is_file() or not fetch.is_file() or output.exists() or resource_adapter.exists():
+        raise WowserPreparationError("Expected pristine upstream index.ts and utils/fetch.ts")
     original = entry.read_text(encoding="utf-8")
     patched = instrument_entrypoint(original)
-    # Write once we know the complete patch can be applied. No original files are copied.
+    original_fetch = fetch.read_text(encoding="utf-8")
+    patched_fetch = checked_replace(
+        original_fetch, "type ResponseBodyType = 'text'",
+        "import { localClientResource } from '../wotlk-lab-resource';\n"
+        "type ResponseBodyType = 'text'",
+    )
+    patched_fetch = checked_replace(
+        patched_fetch, 'const response = await fetch(path);',
+        'const response = await fetch(localClientResource(path));',
+    )
+    # Validate all mandatory original anchors before writing anything.
+    # The source package is already copied to a temporary build directory.
     output.write_text(STAGE_FILE, encoding="utf-8")
+    # Keep JS and TS adapters logically identical; add explicit TS types so
+    # the pinned upstream strict compiler can typecheck the injected module.
+    adapter = adapter_source.read_text(encoding="utf-8")
+    adapter = checked_replace(adapter, "export function localClientResource(input) {",
+                              "export function localClientResource(input: string): string {")
+    adapter = checked_replace(adapter, "  const segments = [];",
+                              "  const segments: string[] = [];")
+    resource_adapter.write_text(adapter, encoding="utf-8")
     entry.write_text(patched, encoding="utf-8")
+    fetch.write_text(patched_fetch, encoding="utf-8")
 
 
 def main() -> int:

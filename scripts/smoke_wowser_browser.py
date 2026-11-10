@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from urllib.parse import urlsplit
 
@@ -42,6 +43,15 @@ def summarize(stage: str | None, js_bundle_loaded: bool, webgl2: bool,
     }
 
 
+def local_ui_gate(report: dict) -> bool:
+    """Require actual upstream UI render invocation, not an assetless probe.
+
+    This still does NOT establish game-world rendering or authentication.
+    """
+    return (report['smoke_passed'] and report['ui_stage'] == 'first-render-call'
+            and not report['missing_required_glue_xml'])
+
+
 def run(url: str) -> dict:
     parsed = urlsplit(url)
     if parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1', 'localhost'):
@@ -52,10 +62,16 @@ def run(url: str) -> dict:
     loaded_scripts: list[str] = []
     missing_glue: list[str] = []
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True, args=[
+        launch = dict(headless=True, args=[
             '--enable-webgl', '--ignore-gpu-blocklist', '--use-gl=angle',
             '--use-angle=swiftshader', '--no-sandbox',
         ])
+        # CI uses Playwright-managed Chromium. The opt-in executable override
+        # enables tests on local machines without modifying the CI contract.
+        system_browser = os.environ.get('WOTLK_CHROMIUM_EXECUTABLE')
+        if system_browser:
+            launch['executable_path'] = system_browser
+        browser = playwright.chromium.launch(**launch)
         try:
             page = browser.new_page(viewport={'width': 1280, 'height': 720})
             page.on('pageerror', lambda _error: errors.append('Uncaught script error'))
@@ -68,7 +84,11 @@ def run(url: str) -> dict:
                     # interface resources were missing is reported.
                     missing_glue.append('Missing local UI')
             page.on('response', on_response)
-            page.goto(url, wait_until='domcontentloaded', timeout=15_000)
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=15_000)
+            except Exception as exc:
+                # Local sandbox policies may block loopback Chromium navigation.
+                raise RuntimeError('Browser navigation unavailable; no UI check performed') from exc
             try:
                 page.wait_for_function("""() => [
                   'ui-loader-returned', 'resource-load-failed',
@@ -93,12 +113,21 @@ def run(url: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--url', default='http://127.0.0.1:8765/client/index.html?embedded=1')
+    parser.add_argument('--require-ui-render', action='store_true',
+                        help='Fail unless the real Wowser UI render method completed')
     args = parser.parse_args()
     try:
         result = run(args.url)
-    except (ValueError, ImportError, OSError) as exc:
+    except (ValueError, ImportError, OSError, RuntimeError) as exc:
         parser.exit(1, f'Browser smoke unavailable: {type(exc).__name__}\n')
     print(json.dumps(result, sort_keys=True))
+    if args.require_ui_render:
+        if local_ui_gate(result):
+            print('Local Wowser UI render invocation verified; NOT WoW game-world rendering.')
+            return 0
+        print('Real UI render not verified (assets missing, error, or render not reached).',
+              file=sys.stderr)
+        return 1
     if result['smoke_passed']:
         return 0
     if result['assetless_probe_passed']:
