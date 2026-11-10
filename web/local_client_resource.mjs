@@ -14,7 +14,7 @@ export function localClientResource(input) {
     throw new Error('Absolute client resource not allowed');
   }
   const segments = [];
-  for (const part of input.replaceAll('\\', '/').split('/')) {
+  for (const part of input.replace(/\\/g, '/').split('/')) {
     if (!part || part === '.') continue;
     if (part === '..') {
       if (!segments.length) throw new Error('Resource escapes local client installation');
