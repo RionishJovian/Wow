@@ -1,4 +1,5 @@
 import { setupTouchInput } from './input.mjs';
+import { createInputMixer } from './input_mixer.mjs';
 import { setupKeyboardInput } from './keyboard_lifecycle.mjs';
 import { detectRuntime } from './runtime_adapter.mjs';
 import { createProbeRuntime } from './render_probe.mjs';
@@ -247,6 +248,8 @@ function emitInput(event) {
   eventOut.textContent = `#${updateIndex} ${event.type} ${fields}`;
 }
 
+const mixer = createInputMixer(emitInput);
+
 const prefKey = 'wotlk-lab-controls-v1';
 let preferences = { sensitivity: 100, leftHanded: false };
 try {
@@ -255,7 +258,7 @@ try {
 } catch { /* Treat invalid local preferences as defaults. */ }
 const touch = setupTouchInput({
   joystick: $('joystick'), knob: $('joystick-knob'), actions: $('actions'),
-  camera: $('camera-pad'), onEvent: emitInput,
+  camera: $('camera-pad'), onEvent: event => mixer.route('touch', event),
   sensitivity: preferences.sensitivity / 100,
 });
 function applyPrefs() {
@@ -277,13 +280,15 @@ $('left-handed').addEventListener('change', event => {
 $('reset-controls').addEventListener('click', () => {
   preferences = { sensitivity: 100, leftHanded: false };
   applyPrefs();
+  touch.reset(); keyboard.reset(); mixer.reset();
   emitInput({ type: 'layout_reset' });
 });
 applyPrefs();
 
 // Desktop keys help test one shared input contract for mobile and desktop.
 // Keyup events are not guaranteed after mobile app switching or page hiding.
-setupKeyboardInput({view:window,page:document,onEvent:emitInput});
+const keyboard = setupKeyboardInput({view:window,page:document,
+  onEvent:event => mixer.route('keyboard', event)});
 
 async function refreshStatus() {
   const button = $('check-status');

@@ -351,3 +351,17 @@ when a browser tab becomes hidden or the user switches apps. Late pointer-captur
 or keyup events cannot duplicate releases. Keyboard shortcuts ignore text fields.
 This is offline control reliability work, not a real WoW login or gameplay test.
 See [touch lifecycle](docs/TOUCH_LIFECYCLE.md).
+
+## Build 18 — touch + keyboard input arbitration
+
+The offline browser demo now merges joystick and WASD inputs before forwarding
+movement to the mounted runtime. A nonzero joystick overrides keyboard movement;
+when touch returns to center, any still-held WASD direction immediately resumes.
+Action 1–5 holds are independently tracked for both input sources and forwarded
+only on a real transition, preventing accidental release while the other source
+is still holding the action. Invalid deltas and indices are rejected. Camera
+drag remains touch-only. Reset now neutralizes both physical input handlers and
+the combined runtime state before sending `layout_reset`.
+
+Check: `node --test tests/input_mixer.test.mjs`. This is original offline demo
+input reliability, **not** authentic WotLK gameplay or real-device validation.
