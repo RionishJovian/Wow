@@ -1,6 +1,7 @@
 import { setupTouchInput } from './input.mjs';
 import { detectRuntime } from './runtime_adapter.mjs';
 import { createProbeRuntime } from './render_probe.mjs';
+import { createOriginalWorldRuntime } from './original_world.mjs';
 import { probeCapabilities } from './capabilities.mjs';
 import { createClientHost } from './client_host.mjs';
 import { browserLabLogin, localBridgeUrl } from './azerothcore_browser_auth.mjs';
@@ -11,6 +12,7 @@ const $ = id => document.getElementById(id);
 const eventOut = $('input-event');
 const runtime = detectRuntime();
 const probeRuntime = createProbeRuntime();
+const worldRuntime = createOriginalWorldRuntime();
 const clientHost = createClientHost();
 let clientInstalled = false;
 let clientBusy = false;
@@ -81,7 +83,7 @@ $('lab-demo-roster').addEventListener('click', () => {
 function setCameraCapture(enabled) {
   stage.classList.toggle('camera-capture', enabled);
   cameraToggle.setAttribute('aria-pressed', String(enabled));
-  cameraToggle.textContent = enabled ? 'Allow client taps' : 'Enable camera drag';
+  cameraToggle.textContent = enabled ? (worldRuntime.mounted ? 'Disable camera drag' : 'Allow client taps') : 'Enable camera drag';
 }
 cameraToggle.addEventListener('click', () => {
   setCameraCapture(!stage.classList.contains('camera-capture'));
@@ -127,6 +129,7 @@ $('launch-client').addEventListener('click', async () => {
       restorePlaceholder();
     } else {
       if (probeRuntime.mounted) await probeRuntime.unmount();
+      if (worldRuntime.mounted) { await worldRuntime.unmount(); resetOriginalWorldButton(); stage.classList.remove('client-active'); cameraToggle.hidden = true; setCameraCapture(false); }
       setCameraCapture(false);
       stage.classList.add('client-active');
       cameraToggle.hidden = false;
@@ -160,6 +163,7 @@ $('start-render').addEventListener('click', async () => {
       await probeRuntime.unmount();
       restorePlaceholder();
     } else {
+      if (worldRuntime.mounted) { await worldRuntime.unmount(); resetOriginalWorldButton(); stage.classList.remove('client-active'); cameraToggle.hidden = true; setCameraCapture(false); }
       if (clientHost.mounted) {
         await clientHost.unmount();
         stage.classList.remove('client-active');
@@ -176,11 +180,66 @@ $('start-render').addEventListener('click', async () => {
   }
 });
 
+let worldBusy = false;
+function resetOriginalWorldButton() {
+  $('start-world').textContent = 'Enter original demo world';
+  $('world-demo-status').textContent = 'Original, asset-free exploration. Not WoW gameplay.';
+}
+$('start-world').addEventListener('click', async () => {
+  if (worldBusy) return;
+  worldBusy = true;
+  $('start-world').disabled = true;
+  try {
+    if (worldRuntime.mounted) {
+      await worldRuntime.unmount();
+      stage.classList.remove('client-active');
+      setCameraCapture(false);
+      cameraToggle.hidden = true;
+      restorePlaceholder();
+      $('render-label').textContent = 'RENDERER NOT MOUNTED';
+      $('fps-status').textContent = '—';
+      resetOriginalWorldButton();
+    } else {
+      if (probeRuntime.mounted) await probeRuntime.unmount();
+      if (clientHost.mounted) await clientHost.unmount();
+      stage.classList.add('client-active');
+      cameraToggle.hidden = false;
+      setCameraCapture(true);
+      await worldRuntime.mount({element:$('game-runtime'),avatar:$('world-avatar').value,
+        onState: state => {
+          $('world-demo-status').textContent = state.detail;
+          if (state.phase === 'running') { $('render-status').textContent = 'Original offline demo'; }
+          if (state.phase === 'running') {
+            $('render-label').textContent = 'ORIGINAL OFFLINE DEMO — NOT WOW';
+            $('fps-status').textContent = Number.isFinite(state.fps) ? `${state.fps} FPS` : '—';
+          } else if (state.phase !== 'stopped') {
+            $('render-label').textContent = 'OFFLINE DEMO UNAVAILABLE';
+          }
+        }});
+      if (worldRuntime.mounted) {
+        setCameraCapture(true);
+        $('start-world').textContent = 'Leave original demo world';
+        $('game-runtime').scrollIntoView({behavior:'smooth',block:'center'});
+      } else {
+        stage.classList.remove('client-active');
+        setCameraCapture(false);
+        cameraToggle.hidden = true;
+      }
+    }
+  } catch (error) {
+    $('world-demo-status').textContent = `Demo unavailable: ${error.message}`;
+    stage.classList.remove('client-active');
+    setCameraCapture(false);
+    cameraToggle.hidden = true;
+  } finally { worldBusy = false; $('start-world').disabled = false; }
+});
+
 let updateIndex = 0;
 function emitInput(event) {
   updateIndex += 1;
   // Only forward to an authentic runtime after it has been explicitly mounted.
-  if (probeRuntime.mounted) probeRuntime.onInput(event);
+  if (worldRuntime.mounted) worldRuntime.onInput(event);
+  else if (probeRuntime.mounted) probeRuntime.onInput(event);
   else if (clientHost.mounted) clientHost.onInput(event);
   else if (runtime && runtime.mounted) runtime.onInput(event);
   const fields = Object.entries(event).filter(([key]) => key !== 'type').map(([k, v]) => `${k}: ${v}`).join(' · ');

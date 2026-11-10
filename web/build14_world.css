@@ -1,0 +1,5 @@
+/* Original offline demo controls; no external imagery/assets. */
+.world-demo-label{display:inline-flex;align-items:center;gap:8px;color:var(--subtle);font-size:12px}
+.world-demo-label select{background:#13292e;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:12px;min-width:100px}
+#world-demo-status{margin:9px 0 15px;color:var(--aqua)}
+@media (max-width:640px){.world-demo-label{width:100%;justify-content:flex-start}.world-demo-label select{flex:1;max-width:190px}}

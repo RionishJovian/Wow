@@ -9,14 +9,15 @@
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/assets/styles.css" />
   <link rel="stylesheet" href="/assets/build13_roster.css" />
-  <title>WotLK Browser Lab — Build 13</title>
+  <link rel="stylesheet" href="/assets/build14_world.css" />
+  <title>WotLK Browser Lab — Build 14</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a href="#home" class="brand" aria-label="Browser Lab home"><span class="brand-mark" aria-hidden="true">✦</span><span>WOTLK<span class="brand-light"> / LAB</span></span></a>
       <span class="header-caption">335A · MOBILE FIRST</span>
-      <span class="build-chip">BUILD 13</span>
+      <span class="build-chip">BUILD 14</span>
     </header>
 
     <main id="home">
@@ -39,7 +40,7 @@
 
       <section id="controls" class="section controls-section" aria-labelledby="controls-title">
         <div class="section-head"><div><p class="eyebrow">01 / INPUT SYSTEM</p><h2 id="controls-title">Touch controls lab</h2></div><span class="small-tag">WORKING PROTOTYPE</span></div>
-        <p class="section-intro">Start the original WebGL2 graphics test or, after installing an authorized external client build, mount that client. Then use the joystick or WASD and drag to pan. <strong>The test is not World of Warcraft gameplay.</strong></p>
+        <p class="section-intro">Enter the <strong>original, offline 3D world</strong> with a synthetic character (joystick/WASD to move, drag to rotate, Action 1 to jump), run the WebGL2 graphics test, or mount an independently installed client. <strong>This is not World of Warcraft gameplay.</strong></p>
         <div class="control-stage" id="control-stage">
           <div class="control-stage-heading"><span class="control-label"><span class="pulse"></span> CONTROL INPUT LIVE</span><span class="stage-angle">LANDSCAPE PREVIEW</span></div>
           <div id="game-runtime" class="game-runtime" aria-label="Game runtime mount point"><div class="runtime-placeholder"><span class="rune">✦</span><strong>World renderer not installed</strong><span>Ready for a compatible WebAssembly / WebGL client</span></div></div>
@@ -56,12 +57,15 @@
           </div>
         </div>
         <div class="renderer-tools">
-          <button class="button button-primary" type="button" id="start-render">Start graphics test</button>
+          <button class="button button-primary" type="button" id="start-world">Enter original demo world</button>
+          <label class="world-demo-label" for="world-avatar">Demo avatar <select id="world-avatar"><option value="sentinel">Sentinel</option><option value="ranger">Ranger</option></select></label>
+          <button class="button button-outline" type="button" id="start-render">Start graphics test</button>
           <button class="button button-outline" type="button" id="launch-client" disabled>Mount external client</button>
           <button class="button button-outline camera-toggle" type="button" id="camera-toggle" aria-pressed="false" hidden>Enable camera drag</button>
           <span id="render-label" class="renderer-label">RENDERER NOT MOUNTED</span>
           <span class="renderer-fps" id="fps-status" aria-live="off">—</span>
         </div>
+        <p id="world-demo-status" class="small-note" role="status" aria-live="polite">Original, asset-free exploration. Not WoW gameplay. Action 1: jump · Action 2: pulse. Drag to rotate camera.</p>
         <div class="input-console"><span class="console-indicator"></span><code id="input-event" aria-live="polite">Waiting for input…</code><button type="button" class="small-button" id="reset-controls">Reset layout</button></div>
         <div class="settings-line"><label for="joystick-sensitivity">Joystick sensitivity <output id="sensitivity-output">100%</output></label><input type="range" id="joystick-sensitivity" min="50" max="150" step="10" value="100" /><label class="checkbox-control"><input type="checkbox" id="left-handed" /> Left-handed layout</label></div>
       </section>
@@ -92,7 +96,7 @@
 
       <section class="section roadmap" id="roadmap"><div class="section-head"><div><p class="eyebrow">04 / DELIVERY GATES</p><h2>Path to a playable realm</h2></div></div><div class="step-list"><div class="step"><span class="step-number done">01</span><div><strong>Browser shell + touch input + external client host</strong><p>Original WebGL2 test and opt-in local client hosting implemented; game still unverified.</p></div><span class="step-tag done">BUILT</span></div><div class="step"><span class="step-number">02</span><div><strong>Actual WotLK gameplay feasibility</strong><p>Integrate upstream-specific input APIs and prove login, world rendering and character movement on real Android and iPhone devices.</p></div><span class="step-tag">BLOCKING</span></div><div class="step"><span class="step-number">03</span><div><strong>Community platform and load testing</strong><p>Account management, admin tools, backups and sustained 500 → 1,000 concurrent-player tests.</p></div><span class="step-tag">PLANNED</span></div></div></section>
     </main>
-    <footer><span>WOTLK / LAB — BUILD 13</span><span>Independent engineering prototype. No Blizzard assets, trademarks or client code included.</span></footer>
+    <footer><span>WOTLK / LAB — BUILD 14</span><span>Independent engineering prototype. No Blizzard assets, trademarks or client code included.</span></footer>
   </div>
   <script type="module" src="/assets/main.mjs"></script>
 </body>

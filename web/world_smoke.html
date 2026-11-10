@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Original offline demo graphics check</title>
+<style>html,body{margin:0;background:#0e141c}#holder{width:800px;height:500px;margin:10px auto}canvas{width:100%;height:100%}</style>
+<div id="holder"></div>
+<script type="module">
+import {createOriginalWorldRuntime} from './original_world.mjs';
+const world=createOriginalWorldRuntime();
+window.world=world;window.worldState='loading';
+try {await world.mount({element:document.getElementById('holder'),onState:s=>{window.worldState=s.phase;window.worldDetail=s.detail;}});}
+catch(e) {window.worldState='error';window.worldDetail='Demo startup failed';}
+</script></html>
