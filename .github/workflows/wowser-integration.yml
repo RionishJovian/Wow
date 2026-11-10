@@ -60,7 +60,7 @@ jobs:
         run: |
           python -m pip install -r requirements.txt playwright
           python -m playwright install --with-deps chromium
-      - name: Smoke test compiled Wowser UI startup (not gameplay)
+      - name: Check compiled UI reachability and expected missing-game-data stage
         env:
           WOTLK_ENABLE_CLIENT: 'true'
           WOTLK_CLIENT_DIR: ${{ runner.temp }}/wowser-ui

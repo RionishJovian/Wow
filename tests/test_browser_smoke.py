@@ -1,19 +1,30 @@
-"""No-network acceptance criteria for an actual compiled UI browser smoke gate."""
+"""Network-free tests of the honest UI smoke-test acceptance criteria."""
 from scripts.smoke_wowser_browser import summarize
 
 
-def test_accepts_only_real_script_loading_and_webgl2_ui_stage():
-    assert summarize("resource-load-failed", True, True, 0)["smoke_passed"] is True
-    for stage in (None, "loading-ui", "render-failed", "bridge-ready"):
-        assert summarize(stage, True, True, 0)["smoke_passed"] is False
-    assert summarize("ui-loader-returned", False, True, 0)["smoke_passed"] is False
-    assert summarize("first-render-call", True, False, 0)["smoke_passed"] is False
-    assert summarize("first-render-call", True, True, 1)["smoke_passed"] is False
+def test_requires_actual_compiled_js_and_webgl2():
+    assert summarize('resource-load-failed', True, True, 0)['smoke_passed'] is False
+    assert summarize('resource-load-failed', True, True, 4,
+                     missing_glue_xml=True)['assetless_probe_passed'] is True
+    assert summarize('resource-load-failed', True, True, 4,
+                     missing_glue_xml=False)['assetless_probe_passed'] is False
+    for stage in (None, 'loading-ui', 'render-failed', 'bridge-ready'):
+        assert summarize(stage, True, True, 0)['smoke_passed'] is False
+    assert summarize('ui-loader-returned', False, True, 0)['smoke_passed'] is False
+    assert summarize('first-render-call', True, False, 0)['smoke_passed'] is False
+    assert summarize('first-render-call', True, True, 1)['smoke_passed'] is False
 
 
-def test_never_claims_real_wow_login_or_gameplay():
-    for stage in ("first-render-call", "resource-load-failed", None):
-        report = summarize(stage, True, True, 0)
-        assert report["gameplay_verified"] is False
-        assert report["realm_connected"] is False
-        assert report["assets_bundled"] is False
+def test_never_reports_playable_client():
+    for stage in ('first-render-call', 'resource-load-failed', None):
+        result = summarize(stage, True, True, 0)
+        assert result['gameplay_verified'] is False
+        assert result['realm_connected'] is False
+        assert result['assets_bundled'] is False
+
+
+def test_expected_missing_ui_does_not_hide_actual_script_errors():
+    report = summarize('resource-load-failed', True, True, 4, missing_glue_xml=True)
+    assert report['uncaught_script_errors'] == 4
+    assert report['smoke_passed'] is False
+    assert report['gameplay_verified'] is False

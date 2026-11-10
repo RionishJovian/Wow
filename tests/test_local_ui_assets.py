@@ -8,7 +8,39 @@ import pytest
 
 from scripts.install_local_ui_assets import LocalAssetsError, install_local_assets, inspect_resources
 from scripts.verify_client_install import VerificationError, verify_installation
-from test_client_verify import make_artifact
+from scripts.install_wowser import SCRIPT_TAG
+from scripts.prepare_wowser import UPSTREAM_COMMIT
+import hashlib
+import shutil
+
+
+def make_artifact(tmp_path: Path) -> Path:
+    """Self-contained pinned UI fixture; never depends on another test module."""
+    folder = tmp_path / 'installed'
+    (folder / 'assets').mkdir(parents=True)
+    originals = {
+        'index.html': ('<!DOCTYPE html><html><body><canvas></canvas>'
+                       '<script type="module" src="/client/assets/wowser.js"></script>'
+                       '</body></html>').encode(),
+        'assets/wowser.js': b'console.log("synthetic MIT fixture");',
+        'WOWSER_LICENSE.txt': b'MIT upstream fixture',
+    }
+    for name, data in originals.items():
+        file = folder / name
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_bytes(data)
+    index = originals['index.html'].decode().replace('</body>', SCRIPT_TAG + '\n</body>')
+    (folder / 'index.html').write_text(index)
+    shutil.copyfile(Path(__file__).resolve().parents[1] / 'web/client_bridge.mjs',
+                    folder / 'lab-bridge.mjs')
+    (folder / 'lab-install.json').write_text(json.dumps({
+        'provider': 'wowserhq/client', 'source_commit': UPSTREAM_COMMIT,
+        'original_sha256': {name: hashlib.sha256(data).hexdigest()
+                            for name, data in originals.items()},
+        'source_file_count': len(originals),
+        'gameplay_verified': False, 'assets_bundled': False,
+    }))
+    return folder
 
 
 def fake_ui(root: Path) -> Path:
