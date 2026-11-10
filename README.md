@@ -313,3 +313,11 @@ protocol, original character models/terrain, and in-game movement.
 The experimental browser can optionally continue a verified, disposable local SRP6 session to the **loopback-only** `/ws/world` bridge. It implements the AzerothCore world challenge, session proof, legacy encrypted packet headers and `CMSG_CHAR_ENUM` / `SMSG_CHAR_ENUM` read-only character metadata. It never follows realm-list network addresses, saves passwords or session keys, exposes character GUIDs, enters the world or controls characters. A separately labeled synthetic character preview works without any server.
 
 On `localhost`, enable the private gateway only when you have your own local authserver/worldserver and a disposable `LAB` account. The **Also read characters** option requires selecting a realm ID explicitly; game data stays outside this repository. Run `node --test tests/*.test.mjs` for offline simulated worldserver and independent crypto checks. Actual live worldserver acceptance, 3D world rendering, in-world movement and mobile hardware testing are still pending. See [world-protocol lab](docs/AZEROTHCORE_WORLD_LAB.md).
+
+## Build 15 — offline collectible objectives
+
+The original, asset-free third-person demo now has three glowing beacons. Use
+Action 3 to collect a nearby beacon and Action 4 to reset. This is a controlled
+local interaction test, **not World of Warcraft gameplay**. The original-world
+Chromium smoke now checks actual pickup and movement. See
+[Build 15 interaction lab](docs/ORIGINAL_WORLD_MISSIONS.md).

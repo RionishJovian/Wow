@@ -60,6 +60,12 @@ def run(*, screenshot: Path | None = None) -> dict:
             page.evaluate("window.world.onInput({type:'move',x:0,y:0})")
             page.evaluate("window.world.onInput({type:'action',index:1,down:true})")
             page.wait_for_function('window.world.stats.height > 0', timeout=3_000)
+            # Verify interaction in the real rendering loop, not only in unit tests.
+            page.evaluate("window.world.onInput({type:'move',x:0,y:1})")
+            page.wait_for_function('window.world.stats.z > 5.8', timeout=20_000)
+            page.evaluate("window.world.onInput({type:'move',x:0,y:0})")
+            page.evaluate("window.world.onInput({type:'action',index:3,down:true})")
+            page.wait_for_function('window.world.stats.beaconsCollected === 1', timeout=4_000)
             page.wait_for_timeout(300)
             if screenshot:
                 page.screenshot(path=str(screenshot), full_page=True)
@@ -67,6 +73,7 @@ def run(*, screenshot: Path | None = None) -> dict:
             return {'browser_render_passed': not failures, 'stage': stage,
                     'movement_verified': state['traveled'] > .15,
                     'jump_input_verified': True,
+                    'beacon_collect_verified': state['beaconsCollected'] == 1,
                     'avatar': state['avatar'], 'gameplay_verified': False,
                     'game_server_connected': False}
         finally:

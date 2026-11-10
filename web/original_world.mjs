@@ -4,6 +4,7 @@
  * The deterministic simulation is separate from the WebGL2 renderer and can
  * be tested without a GPU, browser or network access.
  */
+import {initialMission,missionProgress,missionStatus,collectNearbyBeacon} from './original_world_mission.mjs';
 const TAU = Math.PI * 2;
 const MOVE_SPEED = 4.2;
 const GRAVITY = 14;
@@ -92,6 +93,7 @@ uniform vec2 u_resolution;
 uniform vec4 u_player; // x,z,jump,facing
 uniform vec4 u_camera; // yaw,pitch,energy,time
 uniform float u_avatar;
+uniform vec3 u_beacons; // asset-free objectives
 float sphereHit(vec3 eye, vec3 dir, vec3 center, float radius) {
   vec3 oc = eye - center;
   float b = dot(oc,dir), h = b*b - dot(oc,oc)+radius*radius;
@@ -150,6 +152,20 @@ void main() {
     float t=sphereHit(eye,dir,vec3(p.x,.55,p.y),.8);
     if(t<nearest){nearest=t;vec3 n=normalize(eye+t*dir-vec3(p.x,.55,p.y));rgb=vec3(.38,.41,.39)*(.65+.35*max(0.,dot(n,light)));}
   }
+  // Three procedural collectibles, explicitly NOT real WoW game objects.
+  for(int i=0;i<3;i++){
+    vec2 p=i==0?vec2(0.,7.):i==1?vec2(9.,0.):vec2(-10.,-12.);
+    float enabled=i==0?u_beacons.x:i==1?u_beacons.y:u_beacons.z;
+    if(enabled>.5){
+      vec3 center=vec3(p.x,1.2+.15*sin(u_camera.w*1.7+float(i)),p.y);
+      float t=sphereHit(eye,dir,center,.39);
+      if(t<nearest){
+        nearest=t;
+        vec3 n=normalize(eye+t*dir-center);
+        rgb=vec3(.30,.82,.93)*(.7+.3*max(0.,dot(n,light)));
+      }
+    }
+  }
   // Simple original third-person avatar, not a WoW character model.
   vec3 c=vec3(u_player.x,u_player.z,u_player.y);
   float t=sphereHit(eye,dir,c+vec3(0.,1.55,0.),.23);
@@ -193,17 +209,17 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
   raf = globalThis.requestAnimationFrame?.bind(globalThis),
   cancelRaf = globalThis.cancelAnimationFrame?.bind(globalThis)} = {}) {
   let gl = null, canvas = null, gpu = null, vao = null, observer = null, frameId = 0;
-  let world = initialWorld(), mounted = false, callback = () => {}, fps = 0;
+  let world = initialWorld(), mission=initialMission(), mounted = false, callback = () => {}, fps = 0;
   let previous = 0, sampled = 0, frames = 0;
   function status(phase,detail) { callback({phase,detail,fps}); }
   const runtime = {
     apiVersion:1,
     get mounted() {return mounted;},
-    get stats() {return {fps,...world,mode:'original-offline-demo',networkConnected:false};},
+    get stats() {return {fps,...world,beaconsCollected:missionProgress(mission).count,missionComplete:missionProgress(mission).complete,mode:'original-offline-demo',networkConnected:false};},
     async mount({element, avatar='sentinel', onState=()=>{}} = {}) {
       if (mounted) return;
       if (!element || !documentRef || !raf || !cancelRaf) throw new Error('World demo requires browser rendering APIs');
-      world = initialWorld(avatar); callback = onState;
+      world = initialWorld(avatar); mission=initialMission(); callback = onState;
       canvas = documentRef.createElement('canvas');
       canvas.className = 'render-canvas';
       canvas.setAttribute('aria-label','Original offline 3D exploration demo, not World of Warcraft');
@@ -216,6 +232,7 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
         const player=gl.getUniformLocation(gpu,'u_player');
         const camera=gl.getUniformLocation(gpu,'u_camera');
         const avatarUniform=gl.getUniformLocation(gpu,'u_avatar');
+        const beaconUniform=gl.getUniformLocation(gpu,'u_beacons');
         const resolution=gl.getUniformLocation(gpu,'u_resolution');
         const resize=()=>{
           if(!gl||!canvas)return;
@@ -234,7 +251,7 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
           frameId=0; status('lost','Graphics context lost; restart the demo');
         });
         mounted=true;previous=0;sampled=0;frames=0;fps=0;
-        status('running','Original offline world · synthetic character · no game server');
+        status('running','Original offline world · '+missionStatus(mission,world)+' · no game server');
         function frame(now){
           if(!mounted)return;
           if(!previous) {previous=now;sampled=now;}
@@ -245,24 +262,35 @@ export function createOriginalWorldRuntime({documentRef = globalThis.document,
           gl.uniform4f(player,world.x,world.z,world.height,world.facing);
           gl.uniform4f(camera,world.yaw,world.pitch,world.energy,now/1000);
           gl.uniform1f(avatarUniform,world.avatar==='ranger'?1:0);
+          gl.uniform3f(beaconUniform,mission.collected[0]?0:1,mission.collected[1]?0:1,mission.collected[2]?0:1);
           gl.uniform2f(resolution,canvas.width,canvas.height);
           gl.drawArrays(gl.TRIANGLES,0,3);
           frames++;
           if(now-sampled>=1200){fps=Math.round(frames*1000/(now-sampled));frames=0;sampled=now;
-            status('running',`Original offline world · ${world.traveled.toFixed(1)} m traveled · no game server`);}
+            status('running','Original offline world · '+missionStatus(mission,world)+' · no game server');}
           frameId=raf(frame);
         }
         frameId=raf(frame);
       } catch(error) {await runtime.unmount();throw error;}
     },
-    onInput(event){if(mounted)world=applyWorldInput(world,event);},
+    onInput(event){
+      if(!mounted)return;
+      if(event?.type==='action'&&event.down===true&&event.index===3){
+        mission=collectNearbyBeacon(mission,world);
+        status('running','Original offline world · '+mission.message+' · '+missionStatus(mission,world)+' · no game server');
+      }else if(event?.type==='action'&&event.down===true&&event.index===4){
+        mission=initialMission();
+        status('running','Original offline world · objectives reset · '+missionStatus(mission,world)+' · no game server');
+      }
+      world=applyWorldInput(world,event);
+    },
     async unmount(){
       mounted=false;if(frameId&&cancelRaf)cancelRaf(frameId);frameId=0;
       if(observer)observer.disconnect();observer=null;
       if(gl&&vao)gl.deleteVertexArray(vao);
       if(gl&&gpu)gl.deleteProgram(gpu);
       if(canvas)canvas.remove();gl=null;vao=null;gpu=null;canvas=null;
-      world=initialWorld(); fps=0; status('stopped','Original offline world stopped');
+      world=initialWorld(); mission=initialMission(); fps=0; status('stopped','Original offline world stopped');
     },
   };
   return runtime;

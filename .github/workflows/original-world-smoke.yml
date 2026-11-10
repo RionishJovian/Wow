@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'web/original_world.mjs'
+      - 'web/original_world_mission.mjs'
       - 'web/world_smoke.html'
       - 'scripts/smoke_original_world.py'
       - '.github/workflows/original-world-smoke.yml'

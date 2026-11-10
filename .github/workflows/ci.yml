@@ -19,5 +19,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check web/original_world.mjs && node --check web/azerothcore_browser_world.mjs && node --check web/character_roster.mjs && node --check web/azerothcore_browser_auth.mjs && node --check web/main.mjs && node --check web/input.mjs && node --check web/runtime_adapter.mjs && node --check web/local_client_resource.mjs
+      - run: node --check web/original_world_mission.mjs && node --check web/original_world.mjs && node --check web/azerothcore_browser_world.mjs && node --check web/character_roster.mjs && node --check web/azerothcore_browser_auth.mjs && node --check web/main.mjs && node --check web/input.mjs && node --check web/runtime_adapter.mjs && node --check web/local_client_resource.mjs
       - run: node --test tests/*.test.mjs
