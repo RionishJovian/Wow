@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 08
+# WotLK Mobile Browser Lab — Build 09
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -225,3 +225,24 @@ python -m scripts.azerothcore_auth_probe --host 127.0.0.1 --port 3724
 
 See [Build 08 protocol lab](docs/AZEROTHCORE_LAB.md). A valid challenge reply
 does **not** mean login, a working realm, in-world rendering, or gameplay.
+
+## Build 09 — SRP6 client proof and realm list (offline lab)
+
+A dependency-free WotLK 3.3.5a SRP6 authentication proof client is now implemented
+in `scripts/azerothcore_srp6.py`, with bounded realm-list parsing in
+`scripts/azerothcore_realm_list.py` and an **optional loopback-only** interactive
+login utility in `scripts/azerothcore_lab_login.py`. The offline tests run a
+synthetic authserver with independent server-side SRP6 proof verification and
+one test realm. **No real user account, original WoW client, or game asset is
+required** to run these tests.
+
+```bash
+python -m pytest tests/test_azerothcore_srp6.py -q
+# ONLY with your own disposable lab account on a local authserver:
+python -m scripts.azerothcore_lab_login --account LABUSER
+```
+
+This implementation is **experimental, not security-audited**, and intended for
+one-shot isolated testing. It does not connect to the worldserver or enable
+playable gameplay. See [AzerothCore protocol lab](docs/AZEROTHCORE_LAB.md) for
+exact test evidence, precautions, and remaining gates.
