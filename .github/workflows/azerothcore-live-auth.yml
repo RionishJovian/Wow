@@ -1,0 +1,44 @@
+name: Isolated real AzerothCore authserver (no game assets)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/azerothcore-live-auth.yml'
+      - 'lab/azerothcore-auth.compose.yml'
+      - 'scripts/azerothcore_real_lab.py'
+      - 'scripts/azerothcore_lab_login.py'
+      - 'scripts/azerothcore_srp6.py'
+      - 'scripts/azerothcore_realm_list.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-authserver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate one-time private database credential
+        run: |
+          python - <<'PY'
+          import os, secrets
+          credential = secrets.token_hex(24)
+          print(f'::add-mask::{credential}')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf8') as f:
+              f.write(f'WOTLK_LAB_DB_PASSWORD={credential}\n')
+          PY
+      - name: Validate isolated compose topology
+        run: docker compose -f lab/azerothcore-auth.compose.yml config --quiet
+      - name: Start official AzerothCore authentication components
+        run: docker compose -f lab/azerothcore-auth.compose.yml up -d --pull always ac-authserver
+      - name: Verify real server SRP6 and realm list with disposable account
+        run: python -m scripts.azerothcore_real_lab --port 3724 --wait-seconds 180
+      - name: Show sanitized service state on failure
+        if: failure()
+        run: docker compose -f lab/azerothcore-auth.compose.yml ps --all || true
+      - name: Destroy disposable CI-only lab and database
+        if: always()
+        run: docker compose -f lab/azerothcore-auth.compose.yml down --volumes --remove-orphans || true

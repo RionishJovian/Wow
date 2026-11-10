@@ -25,3 +25,6 @@ client-assets/
 *.ADT
 *.m2
 *.M2
+
+# Disposable authserver lab secrets
+.lab.env

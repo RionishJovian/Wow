@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 10
+# WotLK Mobile Browser Lab — Build 11
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -273,3 +273,17 @@ realm list: it does **not** start worldserver, enter the game, render WotLK asse
 or claim compatibility with real iOS/Android hardware. A real AzerothCore server
 has not yet been tested in this environment. Do not publish the gateway or expose
 it outside the loopback lab.
+
+## Build 11 — real AzerothCore authentication acceptance (Docker)
+
+Build 11 adds an isolated, loopback-bound official AzerothCore **authserver**, MySQL,
+and database-importer Compose lab, and a GitHub Actions job that checks actual
+SRP6 proof verification and realm-list retrieval using a randomly generated
+disposable, nonprivileged account. The account is removed afterward.
+
+No original 3.3.5a game client or Blizzard assets are needed for this auth-only
+check. Worldserver, character selection, world rendering, and gameplay are **not**
+implemented or validated. The actual Docker image integration result must be
+confirmed by GitHub Actions; unit tests alone do not prove it works.
+
+See [Build 11 Docker authserver lab](docs/AZEROTHCORE_REAL_LAB.md).
