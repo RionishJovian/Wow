@@ -11,6 +11,7 @@ import asyncio
 import getpass
 import json
 import struct
+from dataclasses import dataclass, field
 
 from .azerothcore_auth_probe import ProbeError, encode_logon_challenge, validate_target
 from .azerothcore_realm_list import MAX_REPLY, REALM_LIST_REQUEST, parse_realm_list
@@ -18,9 +19,16 @@ from .azerothcore_srp6 import (create_client_proof, parse_server_challenge,
                               validate_identity, verify_server_proof)
 
 
-async def authenticate_and_list_realms(account: str, password: str, *,
+@dataclass(frozen=True)
+class LabSession:
+    """Private, in-memory login outcome. Never serialize or log session_key."""
+    realms: list
+    session_key: bytes = field(repr=False)
+
+
+async def authenticate_lab_session(account: str, password: str, *,
                                        host: str = "127.0.0.1", port: int = 3724,
-                                       timeout: float = 3.0) -> dict:
+                                       timeout: float = 3.0) -> LabSession:
     validate_target(host, port)
     account, _ = validate_identity(account, password)
     if not 0.2 <= timeout <= 5.0:
@@ -52,15 +60,9 @@ async def authenticate_and_list_realms(account: str, password: str, *,
         if length < 8 or length > MAX_REPLY:
             raise ProbeError("Unexpected realm list response length")
         realms = parse_realm_list(frame + await asyncio.wait_for(reader.readexactly(length), timeout))
-        # Explicitly do not print passwords, SRP secrets, proofs, session keys, or IPs.
-        return {
-            "srp6_server_proof_verified": True,
-            "realm_list_decoded": True,
-            "realms": [{"id": r.realm_id, "name": r.name, "characters": r.characters,
-                        "locked": r.locked, "build": r.client_build} for r in realms],
-            "world_connected": False,
-            "gameplay_verified": False,
-        }
+        # Session key is returned privately for the optional local world handshake.
+        return LabSession(realms, proof.session_key)
+
     finally:
         writer.close()
         try:
@@ -68,6 +70,22 @@ async def authenticate_and_list_realms(account: str, password: str, *,
         except (OSError, TimeoutError):
             pass
 
+
+
+async def authenticate_and_list_realms(account: str, password: str, *,
+                                       host: str = "127.0.0.1", port: int = 3724,
+                                       timeout: float = 3.0) -> dict:
+    """Existing sanitized API; deliberately omits the private session key."""
+    lab = await authenticate_lab_session(account, password, host=host,
+                                         port=port, timeout=timeout)
+    return {
+        "srp6_server_proof_verified": True,
+        "realm_list_decoded": True,
+        "realms": [{"id": r.realm_id, "name": r.name, "characters": r.characters,
+                    "locked": r.locked, "build": r.client_build} for r in lab.realms],
+        "world_connected": False,
+        "gameplay_verified": False,
+    }
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)

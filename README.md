@@ -1,4 +1,4 @@
-# WotLK Mobile Browser Lab — Build 11
+# WotLK Mobile Browser Lab — Build 12
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**
 
@@ -287,3 +287,23 @@ implemented or validated. The actual Docker image integration result must be
 confirmed by GitHub Actions; unit tests alone do not prove it works.
 
 See [Build 11 Docker authserver lab](docs/AZEROTHCORE_REAL_LAB.md).
+
+
+## Build 12 — world connection and read-only character listing (protocol lab)
+
+The Python lab now understands AzerothCore's WotLK 3.3.5a world handshake,
+SRP6 session-key digest, encrypted header framing, and the character enum wire
+layout. It is tested **only against an isolated synthetic worldserver**. The
+preceding authserver test is separate: a real 3.3.5a worldserver still requires
+legally usable game-derived data, which is not bundled or downloaded here.
+
+```sh
+python -m pytest tests/test_azerothcore_world.py -q
+# OPTIONAL: only after independently provisioning a legitimate loopback worldserver,
+# disposable account and matching 3.3.5a realm:
+python -m scripts.azerothcore_world_lab --account LABTEST --realm-id 1
+```
+
+See [worldserver integration lab](docs/AZEROTHCORE_WORLD_LAB.md).
+**This is not playable WoW:** the browser client lacks an integrated world
+protocol, original character models/terrain, and in-game movement.
