@@ -1,3 +1,34 @@
+# Emberfall — The Verdant Reach
+
+A playable, original 3D browser action RPG built with Vite, TypeScript, and Three.js. Procedural characters, terrain, particles, and synthesized audio require no game assets or backend.
+
+```sh
+npm ci
+npm run dev
+```
+
+Start as a Warrior; use **Switch class** in the bottom HUD to become a Fire Mage. Move with WASD, jump with Space, orbit with right-drag, and zoom with the wheel. Tab cycles nearby targets; clicking selects enemies. Use 1–6 or the action bar to attack. Move close to Warden Elara and press E to accept or turn in quests. Click defeated enemies (or press E nearby) to loot; B/C opens your equipment and bag. Clicking the minimap places a waypoint. Recover health near Elara; return to Northwatch after defeat.
+
+On touch devices, use the left thumbstick to move, the right LOOK pad to orbit, and the curved Target / Jump / Interact controls. Tap the six ability slots to cast; +/− adjusts zoom. Touches release safely on cancellation, focus loss, or hiding the page.
+
+Vercel builds the root Vite project using `vercel.json` and serves `dist/`.
+
+Both classes have six abilities, a 1.5s global cooldown, resources, individual cooldowns, and distinct effects. Mage casts interrupt on movement. Enemies patrol, pursue, telegraph attacks, leash, and respawn after 35 seconds. Elara offers a three-step quest chain with XP, level-ups, gold, and equipment rewards. Equipment improves power or armor. Progress is session-local.
+
+```sh
+npm run typecheck
+npm run build
+npm test
+```
+
+Mobile multi-touch validation: `python scripts/smoke_emberfall_touch.py` exercises joystick movement, simultaneous orbit, cancellation, jumping, targeting, zoom, and interaction in Chromium touch emulation. Physical-device validation remains separate.
+
+Optional end-to-end browser validation: install Python `playwright`, start Vite, then run `python scripts/smoke_emberfall.py` (system Chromium; override `CHROMIUM_EXECUTABLE` if needed).
+
+Modules live in `src/engine`, `src/world`, `src/entities`, `src/combat`, `src/systems`, and `src/ui`. The game boots directly into the zone; no Python process or external realm is needed. The retained Python prototype below is independent of this game.
+
+---
+
 # WotLK Mobile Browser Lab — Build 21
 
 **Status: Engineering prototype, NOT a playable World of Warcraft client.**

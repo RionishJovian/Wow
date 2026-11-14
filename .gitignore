@@ -28,3 +28,7 @@ client-assets/
 
 # Disposable authserver lab secrets
 .lab.env
+
+# Emberfall development and build outputs
+node_modules/
+dist/
